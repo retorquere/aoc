@@ -1,7 +1,7 @@
 const fs = require('fs')
 let input = fs.readFileSync('4.txt', 'utf-8').split('\n').filter(line => line)
 
-const cards = input.map(card => card.replace(/.*:/, '').split('|').map(list => list.trim().split(/\s+/).map(n => parseInt(n))))
+const cards = input.map(card => card.replace(/.*:/, '').split('|').map(list => list.trim().split(/\s+/)))
   .map(([winning, hand], card) => ({
     card: card + 1,
     copies: 1,
