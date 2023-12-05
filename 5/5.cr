@@ -55,7 +55,7 @@ minimal = -1
 while seeds.size > 0
   remaining = (seeds.size / 2).to_i
   from = seeds.shift()
-  n = from + seeds.shift()
+  n = seeds.shift()
   puts "#{remaining} batches remaining, locating #{n} seeds"
   (from...(from + n)).each{|seed|
     location = Resource.resources["seed"].resolve(seed)
