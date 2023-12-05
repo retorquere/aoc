@@ -53,10 +53,11 @@ File.each_line("5.txt") {|line|
 
 minimal = -1
 while seeds.size > 0
+  remaining = (seeds.size / 2).to_i
   from = seeds.shift()
-  to = from + seeds.shift()
-  puts "#{from} - #{to}"
-  (from...to).each{|seed|
+  n = from + seeds.shift()
+  puts "#{remaining} batches remaining, locating #{n} seeds"
+  (from...(from + n)).each{|seed|
     location = Resource.resources["seed"].resolve(seed)
     minimal = location if minimal == -1 || minimal > location
   }
