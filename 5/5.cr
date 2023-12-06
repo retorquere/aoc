@@ -22,10 +22,6 @@ class ResourceMap
     @maps = [] of ResourceRange
     @@resources[name] = self
   end
-
-  def add(map : ResourceRange)
-    @maps << map
-  end
 end
 
 struct Resource
@@ -52,10 +48,10 @@ File.each_line("5.txt") {|line|
       reading = ResourceMap.new($1, $2)
 
     when /^([0-9]+) ([0-9]+) ([0-9]+)/
-      from = $1.to_i64
+      from = $2.to_i64
       n = $3.to_i64
-      offset = $2.to_i64 - from
-      reading.as(ResourceMap).add(ResourceRange.new(from ... (from + n), offset))
+      offset = $1.to_i64 - from
+      reading.as(ResourceMap).maps << ResourceRange.new(from ... (from + n), offset)
 
     when /^$/
 
@@ -65,6 +61,7 @@ File.each_line("5.txt") {|line|
 }
 
 while resource.name != "location"
+  puts "#{resource.name} #{resource.ranges.size}"
   map = ResourceMap.resources[resource.name]
   resource.ranges = resource.ranges.map{|range|
     unmapped = [ range ]
@@ -91,4 +88,4 @@ end
 
 resource.ranges = resource.ranges.sort_by{|r| r.begin }
 
-puts resource.ranges[0].begin
+puts "min: #{resource.ranges[0].begin}"
