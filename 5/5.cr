@@ -105,15 +105,8 @@ while resource.name != "location"
   resource.name = map.needs
 end
 
-def dash(n : Int64) : String
-  #n.to_s.reverse.split(/(...)/).reverse.select{|n| n != "" }.join("_")
-  n.to_s
-end
 sol = resource.ranges.sort_by{|r| r.begin }.first
 
-#resource.ranges.each{|r|
-#  puts "#{dash(r.begin)} .. #{dash(r.end)}"
-#}
 puts "min: #{sol.begin}"
 
 ResourceMap.resources["humidity"].maps.each{|r|
