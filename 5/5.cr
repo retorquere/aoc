@@ -52,9 +52,9 @@ File.each_line("5.txt") {|line|
       reading = ResourceMap.new($1, $2)
 
     when /^([0-9]+) ([0-9]+) ([0-9]+)/
-      from = $2.to_i64
+      from = $1.to_i64
       n = $3.to_i64
-      offset = $1.to_i64 - from
+      offset = $2.to_i64 - from
       reading.as(ResourceMap).add(ResourceRange.new(from ... (from + n), offset))
 
     when /^$/
