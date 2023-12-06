@@ -1,10 +1,5 @@
 require "option_parser"
 
-input = "5.txt"
-OptionParser.parse do |parser|
-  parser.on("-t", "optional") { |_| input = "5t.txt" }
-end
-
 struct ResourceRange
   property offset
 
@@ -40,7 +35,7 @@ end
 
 resource = Resource.new("seed", [] of Range(Int64, Int64))
 reading = nil
-File.each_line(input) {|line|
+File.each_line("input.txt") {|line|
   case line
     when /^seeds: (.+)/
       seeds = $1.split().map{|s| s.to_i64}
@@ -69,6 +64,7 @@ File.each_line(input) {|line|
 while resource.name != "location"
   puts "#{resource.name} #{resource.ranges.size}"
   map = ResourceMap.resources[resource.name]
+
   resource.ranges = resource.ranges.map{|range|
     unmapped = [ range ]
     mapped = [] of Range(Int64, Int64)
@@ -87,33 +83,40 @@ while resource.name != "location"
     end
 
     mapped
-  }.flatten.sort_by{|r| r.begin }
+  }.flatten#.sort_by{|r| r.begin }
 
-  compacted = [] of Range(Int64, Int64)
-  current = resource.ranges.shift
+  #compacted = [] of Range(Int64, Int64)
+  #current = resource.ranges.shift
 
-  resource.ranges.each do |range|
-    next if range.end <= current.end # fully subsumed
+  #resource.ranges.each do |range|
+  #  next if range.end <= current.end # fully subsumed
 
-    if current.end >= range.begin
-      current = current.begin .. range.end
-    else
-      compacted << current
-      current = range
-    end
-  end
+  #  if current.end >= range.begin
+  #    current = current.begin .. range.end
+  #  else
+  #    compacted << current
+  #    current = range
+  #  end
+  #end
 
-  compacted << current
+  #compacted << current
+  #resource.ranges = compacted
 
-  resource.ranges = compacted
   resource.name = map.needs
 end
 
 def dash(n : Int64) : String
-  n.to_s.reverse.split(/(...)/).reverse.select{|n| n != "" }.join("_")
+  #n.to_s.reverse.split(/(...)/).reverse.select{|n| n != "" }.join("_")
+  n.to_s
 end
-resource.ranges = resource.ranges.sort_by{|r| r.begin }
+sol = resource.ranges.sort_by{|r| r.begin }.first
+
 #resource.ranges.each{|r|
 #  puts "#{dash(r.begin)} .. #{dash(r.end)}"
 #}
-puts "min: #{resource.ranges[0].begin}"
+puts "min: #{sol.begin}"
+
+ResourceMap.resources["humidity"].maps.each{|r|
+  r = (r.begin + r.offset) .. (r.end + r.offset)
+  puts r.begin if r.covers?(sol.begin) && r.covers?(sol.end)
+}
