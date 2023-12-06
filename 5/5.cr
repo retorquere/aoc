@@ -6,12 +6,11 @@ OptionParser.parse do |parser|
 end
 
 struct ResourceRange
-  property mapped
   property offset
 
   forward_missing_to @range
 
-  def initialize(@range : Range(Int64, Int64), @offset : Int64, @mapped = false)
+  def initialize(@range : Range(Int64, Int64), @offset : Int64)
   end
 end
 
