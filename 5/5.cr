@@ -1,3 +1,10 @@
+require "option_parser"
+
+input = "5.txt"
+OptionParser.parse do |parser|
+  parser.on("-t", "optional") { |_| input = "5t.txt" }
+end
+
 struct ResourceRange
   property mapped
   property offset
@@ -34,7 +41,7 @@ end
 
 resource = Resource.new("seed", [] of Range(Int64, Int64))
 reading = nil
-File.each_line("5.txt") {|line|
+File.each_line(input) {|line|
   case line
     when /^seeds: (.+)/
       seeds = $1.split().map{|s| s.to_i64}
@@ -86,6 +93,11 @@ while resource.name != "location"
   resource.name = map.needs
 end
 
+def dash(n : Int64) : String
+  n.to_s.reverse.split(/(...)/).reverse.select{|n| n != "" }.join("_")
+end
 resource.ranges = resource.ranges.sort_by{|r| r.begin }
-
+resource.ranges.each{|r|
+  puts "#{dash(r.begin)} .. #{dash(r.end)}"
+}
 puts "min: #{resource.ranges[0].begin}"
