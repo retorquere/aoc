@@ -50,10 +50,10 @@ File.each_line(input) {|line|
         resource.ranges << (from ... (from + n))
       end
 
-    when /^([a-z]+)-to-([a-z]+) map:/
+    when /^([a-z]+)-to-([a-z]+) map:$/
       reading = ResourceMap.new($1, $2)
 
-    when /^([0-9]+) ([0-9]+) ([0-9]+)/
+    when /^([0-9]+) ([0-9]+) ([0-9]+)$/
       from = $2.to_i64
       n = $3.to_i64
       offset = $1.to_i64 - from
@@ -87,8 +87,25 @@ while resource.name != "location"
     end
 
     mapped
-  }.flatten
+  }.flatten.sort_by{|r| r.begin }
 
+  compacted = [] of Range(Int64, Int64)
+  current_range = resource.ranges.shift
+
+  resource.ranges.each do |range|
+    next if range.end <= current_range.end # fully subsumed
+
+    if current_range.end >= range.begin
+      current_range = current_range.begin .. range.end
+    else
+      compacted << current_range
+      current_range = range
+    end
+  end
+
+  compacted << current_range
+
+  resource.ranges = compacted
   resource.name = map.needs
 end
 
@@ -96,7 +113,7 @@ def dash(n : Int64) : String
   n.to_s.reverse.split(/(...)/).reverse.select{|n| n != "" }.join("_")
 end
 resource.ranges = resource.ranges.sort_by{|r| r.begin }
-resource.ranges.each{|r|
-  puts "#{dash(r.begin)} .. #{dash(r.end)}"
-}
+#resource.ranges.each{|r|
+#  puts "#{dash(r.begin)} .. #{dash(r.end)}"
+#}
 puts "min: #{resource.ranges[0].begin}"
