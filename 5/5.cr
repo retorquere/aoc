@@ -75,8 +75,6 @@ while resource.name != "location"
       cover = map.maps.find{|cr| cr.covers?(sub.begin) || cr.covers?(sub.end) }
       if cover.nil?
         mapped << range
-      elsif cover.covers?(sub.begin) && cover.covers?(sub.end)
-        mapped << ((sub.begin + cover.offset) ... (sub.end + cover.offset))
       else
         unmapped << (sub.begin .. (cover.begin - 1))
         mapped << (([ sub.begin, cover.begin ].max + cover.offset) .. ([ sub.end, cover.end ].min + cover.offset))
