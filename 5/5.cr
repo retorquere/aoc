@@ -90,20 +90,20 @@ while resource.name != "location"
   }.flatten.sort_by{|r| r.begin }
 
   compacted = [] of Range(Int64, Int64)
-  current_range = resource.ranges.shift
+  current = resource.ranges.shift
 
   resource.ranges.each do |range|
-    next if range.end <= current_range.end # fully subsumed
+    next if range.end <= current.end # fully subsumed
 
-    if current_range.end >= range.begin
-      current_range = current_range.begin .. range.end
+    if current.end >= range.begin
+      current = current.begin .. range.end
     else
-      compacted << current_range
-      current_range = range
+      compacted << current
+      current = range
     end
   end
 
-  compacted << current_range
+  compacted << current
 
   resource.ranges = compacted
   resource.name = map.needs
