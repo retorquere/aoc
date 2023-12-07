@@ -2,3 +2,4 @@
 *.txt
 *.dwarf
 exe
+node_modules
