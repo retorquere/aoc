@@ -1,5 +1,17 @@
 #!/usr/bin/env crystal
 
+struct Route
+  property id
+  property path
+  property step
+  property cycle : Int64
+
+  def initialize(@id : Int64, @path : String)
+    @step = @path[0..0]
+    @cycle = (@id + 1) % @path.size
+  end
+end
+
 struct Node
   @@node = Hash(String, Node).new
   def self.node
@@ -9,12 +21,13 @@ struct Node
     @@node.keys
   end
 
-  @@route = ""
+  @@routes = [] of Route
   def self.route
-    @@route
+    @@routes
   end
-  def self.route=(v)
-    @@route = v
+  def self.route=(v : String)
+    d = v + v
+    @@routes = (0...v.size).map{|i| Route.new(i, d[i ... (i + v.size)]) }
   end
 
   def initialize(@name : String, left : String, right : String)
@@ -22,8 +35,8 @@ struct Node
     @@node[@name] = self
   end
 
-  def step(route : String)
-    return @turn[route[0..0]]
+  def step(step : String)
+    return @turn[step]
   end
 end
 
@@ -44,15 +57,20 @@ File.each_line("input.txt") {|line|
 
 [["AAA", "ZZZ"], ["A", "Z"]].each{|config|
   start, finish = config
-  state = Node.nodes.select{|node| node.ends_with?(start)}
-  steps = 0
-  route = ""
-  while state.select{|node| !node.ends_with?("ZZZ")}.size > 0
-    route += Node.route if route.empty?
-    step = route[0..0]
-    route = route[1..]
-    state = state.map{|s| Node.node[s].step(step) }
-    steps += 1
-  end
-  puts "part #{start.size > 1 ? 1 : 2 }: #{steps} steps"
+  starts = Node.nodes.select{|node| node.ends_with?(start)}
+
+  paths = starts.map{|state|
+    route = Node.route[0]
+    steps = 0
+    while !state.ends_with?(finish)
+      state = Node.node[state].step(route.step)
+      route = Node.route[route.cycle]
+      steps += 1
+    end
+
+    steps
+  }
+  
+  puts "part #{start.size > 1 ? 1 : 2}"
+  puts paths.reduce(1_i64) { |acc, n| acc.lcm(n) } 
 }
