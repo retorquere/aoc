@@ -1,6 +1,22 @@
 #!/usr/bin/env crystal
 
-route = [] of Int32
+struct Route
+  include Iterator(Int32)
+
+  @route : Array(Int32)
+
+  def initialize(route : String)
+    @route = route.chars.map{|c| c == 'L' ? 0 : 1 }
+    @left = [] of Int32
+  end
+
+  def next
+    @left = @route.clone if @left.size == 0
+    return @left.shift
+  end
+end
+
+route = Route.new("")
 map = Hash(String, Tuple(String, String)).new
 File.each_line("input.txt") {|line|
   case line
@@ -8,7 +24,7 @@ File.each_line("input.txt") {|line|
       map[$1] = { $2, $3 }
 
     when /^([LR]+)$/
-      route = line.chars.map{|c| {'L' => 0, 'R' => 1}[c] }
+      route = Route.new(line)
 
     when ""
 
@@ -19,10 +35,10 @@ File.each_line("input.txt") {|line|
 
 state = "AAA"
 steps = 0
-r = route.clone
-while state != "ZZZ"
-  r = route.clone() if r.size == 0
-  state = map[state][r.shift]
+route.each do |turn|
+  break if state == "ZZZ"
+  state = map[state][turn]
   steps += 1
 end
-puts steps
+  
+puts "#{steps} steps"
