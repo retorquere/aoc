@@ -1,41 +1,39 @@
 #!/usr/bin/env crystal
 
-template = ""
-map = Hash(String, Hash(String, String)).new
-
 struct Node
-  @@map = Hash(String, Tuple(String, String)).new
-
-  @paths : Array(String)
-
-  property name
-
-  def initialize(@name : String, left : String, right : String)
-    @paths = [] of String
-    @turn = { "L" => left, "R" => right }
+  @@node = Hash(String, Node).new
+  def self.node
+    @@node
+  end
+  def self.nodes
+    @@node.keys
   end
 
-  def walk(route : String) : String
-    return "" if @name == "ZZZ"
+  @@route = ""
+  def self.route
+    @@route
+  end
+  def self.route=(v)
+    @@route = v
+  end
 
-    route += template if route.empty?
+  def initialize(@name : String, left : String, right : String)
+    @turn = { "L" => left, "R" => right }
+    @@node[@name] = self
+  end
 
-    @paths.each{|p|
-      return p if route + (template * p.size).start_with?(p)
-    }
-
-    @paths << route[0] + @@map[@turn[route[0..0]]].walk(route[1..])
-    return @paths[-1]
+  def step(route : String)
+    return @turn[route[0..0]]
   end
 end
 
 File.each_line("input.txt") {|line|
   case line
     when /^([A-Z]+) = [(]([A-Z]+), ([A-Z]+)[)]/
-      map[$1] = { "L" => $2, "R" => $3 }
+      Node.new($1, $2, $3)
 
     when /^([LR]+)$/
-      template = line
+      Node.route = line
 
     when ""
 
@@ -44,15 +42,17 @@ File.each_line("input.txt") {|line|
   end
 }
 
-state = "AAA"
-steps = 0
-route = ""
-while state != "ZZZ"
-  route += template if route.empty?
-  puts map[state]
-  state = map[state][route[0..0]]
-  route = route[1..]
-  steps += 1
-end
-  
-puts "#{steps} steps"
+[["AAA", "ZZZ"], ["A", "Z"]].each{|config|
+  start, finish = config
+  state = Node.nodes.select{|node| node.ends_with?(start)}
+  steps = 0
+  route = ""
+  while state.select{|node| !node.ends_with?("ZZZ")}.size > 0
+    route += Node.route if route.empty?
+    step = route[0..0]
+    route = route[1..]
+    state = state.map{|s| Node.node[s].step(step) }
+    steps += 1
+  end
+  puts "part #{start.size > 1 ? 1 : 2 }: #{steps} steps"
+}
