@@ -5,12 +5,14 @@ E = {0, +1}
 S = {+1, 0}
 W = {0, -1}
 
+alias Coord = NamedTuple(row: Int32, col: Int32)
+
 class Dimensions
   property height : Int32
   property width : Int32
-  property start : Int32
+  property start : Coord
 
-  def initialize(@height = 0, @width = 0, @start = -1)
+  def initialize(@height = 0, @width = 0, @start = {row: -1, col: -1})
   end
 end
 Dimension = Dimensions.new
@@ -18,23 +20,14 @@ Dimension = Dimensions.new
 class Node
   property neighbours
   property steps
-  property id
+  property loc
 
-  def initialize(@id : Int32, @neighbours : Array(Int32))
+  def initialize(@loc : Coord, @neighbours : Array(Coord))
     @steps = -1
   end
-
-  def loc : NamedTuple(row: Int32, col: Int32)
-    return { row: @id // Dimension.width, col: @id % Dimension.width }
-  end
-
-#  def self.id(row : Int32, col : Int32) : Int32
-#    return (row * Dimension.width) + col
-#  end
-
 end
 
-graph = Hash(Int32, Node).new
+graph = Hash(Coord, Node).new
 
 File.new("input.txt").each_line.with_index do |line, row|
   Dimension.width = line.size
@@ -43,7 +36,7 @@ File.new("input.txt").each_line.with_index do |line, row|
 
     next if c == 'O' || c == 'I'
 
-    loc = (row * Dimension.width) + col
+    loc = { row: row, col: col }
     Dimension.start = loc if c == 'S'
     dest = {
       '|' => [N, S],
@@ -55,21 +48,15 @@ File.new("input.txt").each_line.with_index do |line, row|
       '.' => [] of Tuple(Int32, Int32),
       'S' => [] of Tuple(Int32, Int32),
     }[c].map{|dir|
-      nr = row + dir[0]
-      nc = col + dir[1]
-      nr < 0 || nr >= Dimension.width ? -1 : (nr * Dimension.width) + nc
-    }
-    graph[loc] = Node.new(loc, dest) if dest.size > 0
+      { row: row + dir[0], col: col + dir[1] }
+    }.select{|n| n[:col] >= 0 && n[:col] < Dimension.width}
+    graph[loc] = Node.new(loc, dest) if c == 'S' || dest.size > 0
   end
 end
 
 graph[Dimension.start] = Node.new(Dimension.start, [ N, E, S, W ].map{|dir|
-  row = Dimension.start // Dimension.width
-  col = Dimension.start % Dimension.width
-  nr = row + dir[0]
-  nc = col + dir[1]
-  nr < 0 || nr >= Dimension.width ? -1 : (nr * Dimension.width) + nc
-})
+  { row: graph[Dimension.start].loc[:row] + dir[0], col: graph[Dimension.start].loc[:col] + dir[1] }
+}.select{|n| n[:col] >= 0 && n[:col] < Dimension.width})
 
 graph.each{|id, node|
   node.neighbours = node.neighbours.select{|n| graph.has_key?(n) && graph[n].neighbours.includes?(id)}
@@ -124,16 +111,16 @@ graph.each{|id, node|
 
 puts "part 1: #{graph.values.map{|n| n.steps}.max}"
 
-stretch = graph.values.reduce(Hash(Int32, Int32).new){|map, node|
-  map[node.id] = (node.loc[:row] * Dimension.width * 4) + (node.loc[:col] * 2)
+stretch = graph.values.reduce(Hash(Coord, Coord).new){|map, node|
+  map[node.loc] = { row: node.loc[:row] * 2, col: node.loc[:col] * 2 }
   map
 }
 graph.values.each{|node|
-  node.id = stretch[node.id]
+  node.loc = stretch[node.loc]
   node.neighbours = node.neighbours.map{|n| stretch[n]}
 }
-graph = graph.values.reduce(Hash(Int32, Node).new){|g, node|
-  g[node.id] = node 
+graph = graph.values.reduce(Hash(Coord, Node).new){|g, node|
+  g[node.loc] = node 
   g
 }
 Dimension.height = Dimension.height * 2
@@ -171,9 +158,9 @@ end
   flood(0, Dimension.height - 1)
 end
 
-Grid.each{|row|
-  row.each{|cell| print cell }
-  puts
-}
+#Grid.each{|row|
+#  row.each{|cell| print cell }
+#  puts
+#}
 
 puts "part 2: #{(0...Dimension.height).step(2).map{|row| (0...Dimension.width).step(2).map{|col| Grid[row][col] == ' ' ? 1 : 0 }.sum }.sum}"
