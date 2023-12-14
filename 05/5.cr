@@ -1,30 +1,30 @@
 #!/usr/bin/env ruby
 
 class Entry
-  property src_begin
-  property src_end
-  property dst_begin
+  property src
+  property dst
 
-  def initialize(@src_begin : Int64, @dst_begin : Int64, len : Int64)
-    @src_end = @src_begin + len
+  def initialize(src : Int64, dst : Int64, len : Int64)
+    @src = src ... (src + len)
+    @dst = dst ... (dst + len)
   end
 end
 
-def map_entry(entry, src)
-  entry.dst_begin + (src - entry.src_begin)
+def convert(entry : Entry, src : Int64)
+  entry.dst.begin + (src - entry.src.begin)
 end
 
-def apply_map(src_range : Range(Int64, Int64), entries : Array(Entry))
+def apply_map(src : Range(Int64, Int64), entries : Array(Entry))
   mapped = [] of Range(Int64, Int64)
   matched = false
   entries.each do |entry|
-    next if entry.src_begin >= src_range.end || src_range.begin >= entry.src_end
+    next if entry.src.begin >= src.end || src.begin >= entry.src.end
     matched = true
-    mapped << (map_entry(entry, [src_range.begin, entry.src_begin].max) ... map_entry(entry, [src_range.end, entry.src_end].min))
-    mapped.concat(apply_map((src_range.begin...entry.src_begin), entries)) if src_range.begin < entry.src_begin
-    mapped.concat(apply_map((entry.src_end...src_range.end), entries)) if entry.src_end < src_range.end
+    mapped << (convert(entry, [src.begin, entry.src.begin].max) ... convert(entry, [src.end, entry.src.end].min))
+    mapped.concat(apply_map((src.begin...entry.src.begin), entries)) if src.begin < entry.src.begin
+    mapped.concat(apply_map((entry.src.end...src.end), entries)) if entry.src.end < src.end
   end
-  mapped << src_range unless matched
+  mapped << src unless matched
   mapped
 end
 
