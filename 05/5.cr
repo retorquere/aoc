@@ -1,79 +1,49 @@
-#!/usr/bin/env crystal
+#!/usr/bin/env ruby
 
-module G  
-  class_property seeds = [] of Int64
-end
+class Entry
+  property src_begin
+  property src_end
+  property dst_begin
 
-alias Map = NamedTuple(makes: Range(Int64, Int64), takes: Range(Int64, Int64))
-alias Ranges = Array(Range(Int64, Int64))
-
-class ResourceConverter
-  @@for = Hash(String, ResourceConverter).new
-  def self.for
-    @@for
-  end
-
-  property takes
-  property makes
-  property maps
-
-  def initialize(@makes : String, @takes : String, @maps = [] of Map)
-    @@for[@takes] = self
-  end
-
-  def overlap?(r1 : Range(Int64, Int64), r2 : Range(Int64, Int64))
-    r1.covers?(r2.begin) || r2.covers?(r1.begin)
-  end
-  
-  def convert(ranges : Ranges) : Ranges
-    unmapped = ranges.clone
-    mapped = [] of Range(Int64, Int64)
-    while !unmapped.empty?
-      range = unmapped.pop
-      cover = @maps.find({ makes: range, takes: range }){|map| self.overlap?(range, map[:takes]) }
-
-      left = range.begin ... cover[:takes].begin
-      overlap = [ range.begin, cover[:takes].begin ].max .. [ range.end, cover[:takes].end ].min
-      right = (cover[:takes].end + 1) .. range.end
-
-      unmapped << left if !left.empty?
-      unmapped << right if !right.empty?
-
-      offset = cover[:makes].begin - cover[:takes].begin
-      mapped << ((overlap.begin + offset) .. (overlap.end + offset))
-    end
-    return mapped
+  def initialize(@src_begin : Int64, @dst_begin : Int64, len : Int64)
+    @src_end = @src_begin + len
   end
 end
 
-File.each_line("input.txt") {|line|
-  case line
-  when /seeds: (.+)/
-    G.seeds = $1.split.map{|n| n.to_i64}
+def map_entry(entry, src)
+  entry.dst_begin + (src - entry.src_begin)
+end
 
-  when /^$/
-
-  when /^([a-z]+)-to-([a-z]+) map:/
-    ResourceConverter.new($2, $1)
-
-  when /^([0-9]+) ([0-9]+) ([0-9]+)/
-    makes = $1.to_i64
-    takes = $2.to_i64
-    len = $3.to_i64
-    ResourceConverter.for.last_value.maps << { makes: makes...(makes + len), takes: takes...(takes + len) }
+def apply_map(src_range : Range(Int64, Int64), entries : Array(Entry))
+  mapped = [] of Range(Int64, Int64)
+  matched = false
+  entries.each do |entry|
+    next if entry.src_begin >= src_range.end || src_range.begin >= entry.src_end
+    matched = true
+    mapped << (map_entry(entry, [src_range.begin, entry.src_begin].max) ... map_entry(entry, [src_range.end, entry.src_end].min))
+    mapped.concat(apply_map((src_range.begin...entry.src_begin), entries)) if src_range.begin < entry.src_begin
+    mapped.concat(apply_map((entry.src_end...src_range.end), entries)) if entry.src_end < src_range.end
   end
+  mapped << src_range unless matched
+  mapped
+end
+
+Stanzas = File.read("input.txt").chomp.split("\n\n")
+Seeds = Stanzas.shift.sub("seeds: ", "").split.map{|i| i.to_i64}
+
+Maps = Stanzas.map{|map|
+  map.split("\n")[1..].map{|line|
+    dst, src, len = line.split.map{|i| i.to_i64}
+    Entry.new(src, dst, len)
+  }
 }
 
-def solve(ranges)
-  resource = "seed"
-  while resource != "location"
-    converter = ResourceConverter.for[resource]
-    ranges = converter.convert(ranges)
-    resource = converter.makes
-  end
-  ranges = ranges.sort_by{|range| range.begin}
-  puts ranges[0].begin
+def solve(seeds)
+  Maps.each{|map|
+    seeds = seeds.map{|rng| apply_map(rng, map) }.flatten.uniq
+  }
+  seeds.min_by{|rng| rng.begin}.begin
 end
 
-solve(G.seeds.map{|n| n..n })
-solve(G.seeds.each_slice(2).to_a.map{|sl| sl[0] ... (sl.sum) })
+puts "part 2: #{solve(Seeds.map{|s| s .. s })}"
+puts "part 2: #{solve(Seeds.each_slice(2).to_a.map{|r| r[0] ... r.sum })}"
