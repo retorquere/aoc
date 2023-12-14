@@ -1,115 +1,79 @@
-require "option_parser"
+#!/usr/bin/env crystal
 
-struct ResourceRange
-  property offset
-
-  forward_missing_to @range
-
-  def initialize(@range : Range(Int64, Int64), @offset : Int64)
-  end
+module G  
+  class_property seeds = [] of Int64
 end
 
-class ResourceMap
-  property name
-  property needs
+alias Map = NamedTuple(makes: Range(Int64, Int64), takes: Range(Int64, Int64))
+alias Ranges = Array(Range(Int64, Int64))
+
+class ResourceConverter
+  @@for = Hash(String, ResourceConverter).new
+  def self.for
+    @@for
+  end
+
+  property takes
+  property makes
   property maps
 
-  @@resources = Hash(String, ResourceMap).new
-  def self.resources
-    @@resources
+  def initialize(@makes : String, @takes : String, @maps = [] of Map)
+    @@for[@takes] = self
   end
 
-  def initialize(@name : String, @needs : String)
-    @maps = [] of ResourceRange
-    @@resources[name] = self
+  def overlap?(r1 : Range(Int64, Int64), r2 : Range(Int64, Int64))
+    r1.covers?(r2.begin) || r2.covers?(r1.begin)
+  end
+  
+  def convert(ranges : Ranges) : Ranges
+    unmapped = ranges.clone
+    mapped = [] of Range(Int64, Int64)
+    while !unmapped.empty?
+      range = unmapped.pop
+      cover = @maps.find({ makes: range, takes: range }){|map| self.overlap?(range, map[:takes]) }
+
+      left = range.begin ... cover[:takes].begin
+      overlap = [ range.begin, cover[:takes].begin ].max .. [ range.end, cover[:takes].end ].min
+      right = (cover[:takes].end + 1) .. range.end
+
+      unmapped << left if !left.empty?
+      unmapped << right if !right.empty?
+
+      offset = cover[:makes].begin - cover[:takes].begin
+      mapped << ((overlap.begin + offset) .. (overlap.end + offset))
+    end
+    return mapped
   end
 end
 
-struct Resource
-  property name
-  property ranges
-
-  def initialize(@name : String, @ranges : Array(Range(Int64, Int64)))
-  end
-end
-
-resource = Resource.new("seed", [] of Range(Int64, Int64))
-reading = nil
 File.each_line("input.txt") {|line|
   case line
-    when /^seeds: (.+)/
-      seeds = $1.split().map{|s| s.to_i64}
-      while seeds.size > 0
-        from = seeds.shift
-        n = seeds.shift
-        resource.ranges << (from ... (from + n))
-      end
+  when /seeds: (.+)/
+    G.seeds = $1.split.map{|n| n.to_i64}
 
-    when /^([a-z]+)-to-([a-z]+) map:$/
-      reading = ResourceMap.new($1, $2)
+  when /^$/
 
-    when /^([0-9]+) ([0-9]+) ([0-9]+)$/
-      from = $2.to_i64
-      n = $3.to_i64
-      offset = $1.to_i64 - from
-      reading.as(ResourceMap).maps << ResourceRange.new(from ... (from + n), offset)
+  when /^([a-z]+)-to-([a-z]+) map:/
+    ResourceConverter.new($2, $1)
 
-    when /^$/
-
-    else
-      raise line
+  when /^([0-9]+) ([0-9]+) ([0-9]+)/
+    makes = $1.to_i64
+    takes = $2.to_i64
+    len = $3.to_i64
+    ResourceConverter.for.last_value.maps << { makes: makes...(makes + len), takes: takes...(takes + len) }
   end
 }
 
-while resource.name != "location"
-  puts "#{resource.name} #{resource.ranges.size}"
-  map = ResourceMap.resources[resource.name]
-
-  resource.ranges = resource.ranges.map{|range|
-    unmapped = [ range ]
-    mapped = [] of Range(Int64, Int64)
-
-    while unmapped.size > 0
-      sub = unmapped.pop
-      cover = map.maps.find{|cr| cr.covers?(sub.begin) || cr.covers?(sub.end) }
-      if cover.nil?
-        mapped << range
-      else
-        unmapped << (sub.begin .. (cover.begin - 1))
-        mapped << (([ sub.begin, cover.begin ].max + cover.offset) .. ([ sub.end, cover.end ].min + cover.offset))
-        unmapped << ((cover.end + 1) .. sub.end)
-      end
-      unmapped = unmapped.select{|r| !r.empty? }
-    end
-
-    mapped
-  }.flatten#.sort_by{|r| r.begin }
-
-  #compacted = [] of Range(Int64, Int64)
-  #current = resource.ranges.shift
-
-  #resource.ranges.each do |range|
-  #  next if range.end <= current.end # fully subsumed
-
-  #  if current.end >= range.begin
-  #    current = current.begin .. range.end
-  #  else
-  #    compacted << current
-  #    current = range
-  #  end
-  #end
-
-  #compacted << current
-  #resource.ranges = compacted
-
-  resource.name = map.needs
+def solve(ranges)
+  resource = "seed"
+  while resource != "location"
+    converter = ResourceConverter.for[resource]
+    ranges = converter.convert(ranges)
+    resource = converter.makes
+  end
+  ranges = ranges.sort_by{|range| range.begin}
+  puts ranges[0].begin
 end
 
-sol = resource.ranges.sort_by{|r| r.begin }.first
-
-puts "min: #{sol.begin}"
-
-ResourceMap.resources["humidity"].maps.each{|r|
-  r = (r.begin + r.offset) .. (r.end + r.offset)
-  puts r.begin if r.covers?(sol.begin) && r.covers?(sol.end)
-}
+solve(G.seeds.map{|n| n..n })
+solve(G.seeds.each_slice(2).to_a.map{|sl| sl[0] ... (sl.sum) })
