@@ -2,6 +2,7 @@
 
 class CPlatform
   @width = 0
+
   @round : Array(UInt128)
   @cube : Array(UInt128)
 
@@ -12,7 +13,7 @@ class CPlatform
   def initialize
     @round = [] of UInt128
     @cube = [] of UInt128
-    File.read("sample.txt").strip.split("\n").map{|row|
+    File.read("input.txt").strip.split("\n").map{|row|
       @width = row.size
       @round << row.gsub(".", "0").gsub("#", "0").gsub("O", "1").to_u128(2)
       @cube << row.gsub(".", "0").gsub("#", "1").gsub("O", "0").to_u128(2)
@@ -28,6 +29,45 @@ class CPlatform
         @round[up] += move
         @round[row] -= move
       end
+    end
+  end
+
+  def rot(rows : Array(UInt128)) : Array(UInt128)
+    rows.map{|row| self.chars(row) }.transpose.map{|row| row.reverse.join("").to_u128(2) }
+  end
+
+  def rotate
+    @round = self.rot(@round)
+    @cube = self.rot(@cube)
+  end
+
+  def cycle
+    4.times do
+      self.n
+      self.rotate
+    end
+  end
+
+  def run(n = 1_u128)
+    self.initialize
+    rounds = Hash(Array(UInt128), Int32).new
+    effectively = 0
+    n.times do |round|
+      key = @round + @cube
+      if rounds.has_key?(key)
+        rampup = rounds[key] + 1
+        loop = round - rounds[key]
+        effectively = rampup + (n - rampup) % loop
+        break
+      end
+
+      self.cycle
+      rounds[key] = round
+    end
+
+    self.initialize
+    effectively.times do
+      self.cycle
     end
   end
 
@@ -51,7 +91,10 @@ class CPlatform
 end
 Platform = CPlatform.new
 
-Platform.show
+#Platform.show
 Platform.n
-Platform.show
+#Platform.show
+puts Platform.weight
+
+Platform.run(1000000000)
 puts Platform.weight
