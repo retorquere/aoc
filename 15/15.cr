@@ -1,5 +1,7 @@
 #!/usr/bin/env crystal
 
+#puts "part 1: #{File.read("input.txt").gsub("\n", "").split(",").map{|instr| instr.each_byte.to_a.reduce(0){|acc, n| ((acc + n) * 17) % 256 } }.sum}"
+
 input = File.read("input.txt").gsub("\n", "").split(",")
 
 def boxid(s : String)
