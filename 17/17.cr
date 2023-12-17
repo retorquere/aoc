@@ -1,6 +1,6 @@
 #!/usr/bin/env crystal
 
-require "benchmark"
+require "priority-queue"
 
 R = {0, +1}
 D = {+1, 0}
@@ -8,7 +8,7 @@ L = {0, -1}
 U = {-1, 0}
 
 alias Coord = Tuple(Int32, Int32)
-alias State = NamedTuple(cost: Int32, cell: Coord, move: Coord, n: Int32)
+alias Open = NamedTuple(cost: Int32, cell: Coord, move: Coord, n: Int32)
 
 Grid = Hash(Coord, Int32).new
 
@@ -20,11 +20,14 @@ end
 
 def search(max_same)
   visited = Set(NamedTuple(cell: Coord, move: Coord, n: Int32)).new
-  open = [{ cost: 0, cell: {0, 0}, move: R, n: 1 }, { cost:0, cell: {0, 0}, move: D, n: 1 }]
+  open = Priority::Queue(Open).new
+  [{ cost: 0, cell: {0, 0}, move: R, n: 1 }, { cost:0, cell: {0, 0}, move: D, n: 1 }].each do |o|
+    open.push(-o[:cost], o)
+  end
   goal = Grid.keys.max
 
   until open.empty?
-    cheapest = open.shift
+    cheapest = open.pop.value
 
     next unless visited.add?({ cell: cheapest[:cell], move: cheapest[:move], n: cheapest[:n] })
 
@@ -41,9 +44,8 @@ def search(max_same)
       next if move.to_a.zip(cheapest[:move].to_a).map{|dir| dir.sum}.uniq == [0]
       n = cheapest[:move] == move ? cheapest[:n] + 1 : 1
       next if n > max_same
-      open << { cost: cost, cell: cell, move: move, n: n }
+      open.push(-cost, { cost: cost, cell: cell, move: move, n: n })
     end
-    open.sort_by!{|state| state[:cost]}
   end
 end
 
