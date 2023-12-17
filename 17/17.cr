@@ -6,7 +6,7 @@ L = {0, -1}
 U = {-1, 0}
 
 alias Coord = Tuple(Int32, Int32)
-alias State = NamedTuple(cost: Int32, cell: Coord, dir: Coord, n: Int32)
+alias State = NamedTuple(cost: Int32, cell: Coord, moves: Array(Coord))
 
 Grid = Hash(Coord, Int32).new
 
@@ -17,29 +17,29 @@ File.read("sample.txt").chomp.split("\n").each_with_index do |line, row|
 end
 
 def search(max_same)
-  visited = Set(NamedTuple(cell: Coord, dir: Coord, n: Int32)).new
-  open = [{ cost: 0, cell: {0, 0}, dir: R, n:1 }, { cost:0, cell: {0, 0}, dir: D, n: 1 }]
+  visited = Set(NamedTuple(cell: Coord, moves: Array(Coord))).new
+  open = [{ cost: 0, cell: {0, 0}, moves: [R] }, { cost:0, cell: {0, 0}, moves: [D] }]
   goal = Grid.keys.max
 
   until open.empty?
     cheapest = open.shift
 
-    next unless visited.add?(NamedTuple(cell: Coord, dir: Coord, n: Int32).from(cheapest.to_h.reject(:cost)))
+    next unless visited.add?(NamedTuple(cell: Coord, moves: Array(Coord)).from(cheapest.to_h.reject(:cost)))
 
-    cell = {cheapest[:cell][0] + cheapest[:dir][0], cheapest[:cell][1] + cheapest[:dir][1]}
+    cell = {cheapest[:cell][0] + cheapest[:moves][0][0], cheapest[:cell][1] + cheapest[:moves][0][1]}
     next unless Grid.has_key?(cell)
 
     cost = cheapest[:cost] + Grid[cell]
-    if cheapest[:n] <= max_same
+    if cheapest[:moves].size <= max_same
       return cost if cell == goal
     end
 
-    [R, D, L, U].each do |dir|
+    [R, D, L, U].each do |move|
       # can't reverse
-      next if dir.to_a.zip(cheapest[:dir].to_a).map{|move| move.sum}.uniq == [0]
-      n = cheapest[:dir] == dir ? cheapest[:n] + 1 : 1
-      next if n > max_same
-      open << { cost: cost, cell: cell, dir: dir, n: n }
+      next if move.to_a.zip(cheapest[:moves][0].to_a).map{|dir| dir.sum}.uniq == [0]
+      moves = cheapest[:moves][0] == move ? [ move ] + cheapest[:moves] : [ move ]
+      next if moves.size > max_same
+      open << { cost: cost, cell: cell, moves: moves }
     end
     open.sort_by!{|state| state[:cost]}
   end
