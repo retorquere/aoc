@@ -2,51 +2,55 @@
 
 require "priority-queue"
 
-R = {0, +1}
-D = {+1, 0}
-L = {0, -1}
-U = {-1, 0}
-
 alias Coord = Tuple(Int32, Int32)
-alias Open = NamedTuple(cost: Int32, cell: Coord, move: Coord, n: Int32)
+alias State = Tuple(Int32, Coord, Int32, Int32) # cost, pos, dir, n
 
 Grid = Hash(Coord, Int32).new
 
-File.read("input.txt").chomp.split("\n").each_with_index do |line, row|
+File.read("sample.txt").chomp.split("\n").each_with_index do |line, row|
   line.chars.each_with_index do |cost, col|
     Grid[{row, col}] = cost.to_i
   end
 end
 
-def search(max_same)
-  visited = Set(NamedTuple(cell: Coord, move: Coord, n: Int32)).new
-  open = Priority::Queue(Open).new
-  [{ cost: 0, cell: {0, 0}, move: R, n: 1 }, { cost:0, cell: {0, 0}, move: D, n: 1 }].each do |o|
-    open.push(-o[:cost], o)
-  end
-  goal = Grid.keys.max
+Moves = [{1, 0}, {0, 1}, {-1, 0}, {0, -1}]
+
+def solve(min, max)
+  open = Priority::Queue(State).new
+  open.push(0, {0, Grid.keys.min, 0, 0})
+  open.push(0, {0, Grid.keys.min, 1, 0})
+  visited = Set(Tuple(Coord, Int32, Int32)).new
 
   until open.empty?
-    cheapest = open.pop.value
+    cost, current, dir, n = open.pop.value
 
-    next unless visited.add?({ cell: cheapest[:cell], move: cheapest[:move], n: cheapest[:n] })
+    next unless visited.add?({current, dir, n})
 
-    cell = {cheapest[:cell][0] + cheapest[:move][0], cheapest[:cell][1] + cheapest[:move][1]}
-    next unless Grid.has_key?(cell)
-
-    cost = cheapest[:cost] + Grid[cell]
-    if cheapest[:n] <= max_same
-      return cost if cell == goal
+    if current == Grid.keys.max
+      if n >= min
+        puts cost
+        return
+      end
     end
 
-    [R, D, L, U].each do |move|
-      # can't reverse
-      next if move.to_a.zip(cheapest[:move].to_a).map{|dir| dir.sum}.uniq == [0]
-      n = cheapest[:move] == move ? cheapest[:n] + 1 : 1
-      next if n > max_same
-      open.push(-cost, { cost: cost, cell: cell, move: move, n: n })
+    turn = Moves[dir]
+    neighbour = { current[0] + turn[0], current[1] + turn[1] }
+    next unless Grid.has_key?(neighbour)
+
+    cost += Grid[neighbour]
+    n += 1
+
+    if n < max
+      open.push(-cost, { cost, neighbour, dir, n })
+    end
+
+    if n >= min
+      open.push(-cost, {cost, neighbour, (dir + 1) % 4, 0})
+      open.push(-cost, {cost, neighbour, (dir - 1) % 4, 0})
     end
   end
+  return -1
 end
 
-puts search(3)
+solve(1, 3)
+solve(4, 10)
