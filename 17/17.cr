@@ -19,7 +19,7 @@ File.read("input.txt").chomp.split("\n").each_with_index do |line, row|
   end
 end
 
-def search(min, max)
+def search(allowed : Range(Int32, Int32))
   visited = Set(State).new
   open = Priority::Queue(Candidate).new
   [{ 0, Grid.keys.min, R, 1 }, { 0, Grid.keys.min, D, 1 }].each do |o|
@@ -36,18 +36,18 @@ def search(min, max)
     next unless Grid.has_key?(neighbour)
 
     cost += Grid[neighbour]
-    return cost if neighbour == goal && n >= min && n <= max
+    return cost if neighbour == goal && allowed.covers?(n)
 
     [R, D, L, U].each do |move|
       # can't reverse
       next if { dir[0] + move[0], dir[1] + move[1] } == {0, 0}
 
       # no turn unless min distance covered
-      next if move != dir && n < min
+      next if move != dir && n < allowed.begin
 
       # don't proceed if crucible gets wobbly
       move_n = dir == move ? n + 1 : 1
-      next if move_n > max
+      next if move_n > allowed.end
 
       open.push(-cost, { cost, neighbour, move, move_n })
     end
@@ -55,5 +55,5 @@ def search(min, max)
   return -1
 end
 
-puts search(1, 3)
-puts search(4, 10)
+puts search(1..3)
+puts search(4..10)
