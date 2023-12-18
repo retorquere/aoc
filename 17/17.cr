@@ -36,9 +36,7 @@ def search(min, max)
     next unless Grid.has_key?(neighbour)
 
     cost += Grid[neighbour]
-    if n >= min && n <= max
-      return cost if neighbour == goal
-    end
+    return cost if neighbour == goal && n >= min && n <= max
 
     [R, D, L, U].each do |move|
       # can't reverse
