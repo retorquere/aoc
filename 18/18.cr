@@ -40,19 +40,15 @@ File.read("input.txt").chomp.split("\n").each{ |line|
   Part2 << Part2[-1].move(Move[$4[0]], $3.to_i64(16))
 }
 
-def svg(path : Array(Tuple(Int64, Int64)))
-  width = path.map{|step| step[0]}.max + 1
-  height = path.map{|step| step[1]}.max + 1
-
-  edges = path.each_cons(2).to_a.map{|pair|
-    n1, n2 = pair
-    x1, y1 = n1
-    x2, y2 = n2
-    { ([x1, x2].min + 1) .. ([x1, x2].max - 1), ([y1, y2].min + 1) .. ([y1, y2].max - 1) }
-  }
-  File.open("18.svg", "w") do |f|
-    f.print("<svg viewBox=\"0 0 #{width} #{height}\" xmlns=\"http://www.w3.org/2000/svg\">\n<polygon points=\"")
-    f.print(path[0...-1].map{|point| "#{point[0]},#{point[1]}"}.join(" "))
+def svg(path : Array(Point), filename : String)
+  xmin = path.map{|p| p.x}.min
+  ymin = path.map{|p| p.y}.min
+  path = path.map{|p| p.move({ -xmin, -ymin }, 1)}
+  xmax = path.map{|p| p.x}.max
+  ymax = path.map{|p| p.y}.max
+  File.open(filename, "w") do |f|
+    f.print("<svg viewBox=\"0 0 #{xmax} #{ymax}\" xmlns=\"http://www.w3.org/2000/svg\">\n<polygon points=\"")
+    f.print(path[0...-1].map{|p| "#{p.x},#{p.y}"}.join(" "))
     f.puts("\" fill=\"none\" stroke=\"black\" />")
     f.puts("</svg>")
   end
@@ -70,3 +66,6 @@ end
 
 puts shoelace_plus_border(Part1)
 puts shoelace_plus_border(Part2)
+
+svg(Part1, "part1.svg")
+svg(Part2, "part2.svg")
