@@ -1,0 +1,13 @@
+name: 17
+version: 0.1.0
+
+# authors:
+#   - name <email@example.com>
+
+# description: |
+#   Short description of 17
+
+dependencies:
+  priority-queue:
+    github: spider-gazelle/priority-queue
+
