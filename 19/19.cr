@@ -107,7 +107,6 @@ ops = [
   { "in", 0, { 'x' => 1 .. 4000, 'm' => 1 .. 4000, 'a' => 1 .. 4000, 's' => 1 .. 4000 } }
 ]
 until ops.empty?
-  shelves += 1
   state, fidx, part = ops.pop
   if state == "A"
     sum += part.values.map{|rng| rng.size }.product(1_i64)
@@ -118,7 +117,8 @@ until ops.empty?
     match, excluded = filter.split(part)
     ops << { filter.state, 0, match } unless match.values.find{|rng| rng.empty? }
     excluded.each do |p|
-      ops << { state, fidx + 1, p } unless p.values.find{|rng| rng.empty? }
+      next if p.values.find{|rng| rng.empty? }
+      ops << { state, fidx + 1, p }
     end
   end
 end
