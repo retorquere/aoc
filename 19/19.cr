@@ -1,6 +1,7 @@
 #!/usr/bin/env crystal
 
-alias Part = Hash(Char, Range(Int32, Int32))
+alias Part = Hash(Char, Int32)
+alias Shelve = Hash(Char, Range(Int32, Int32))
 
 require "./util"
 
@@ -33,12 +34,12 @@ class Filter
     end
   end
 
-  def split(part : Part) : Tuple(Part, Array(Part))
-    return { part, [] of Part } if @pass
+  def split(shelve : Shelve) : Tuple(Shelve, Array(Shelve))
+    return { shelve, [] of Shelve } if @pass
 
     return {
-      part.merge({ @attr => part[@attr] * @range }),
-      (part[@attr] - @range).map{|rng| part.merge({ @attr => rng }) }
+      shelve.merge({ @attr => shelve[@attr] * @range }),
+      (shelve[@attr] - @range).map{|rng| shelve.merge({ @attr => rng }) }
     }
   end
 end
@@ -83,7 +84,7 @@ File.read("input.txt").chomp.split("\n").each do |line|
   when /^[{]([^}]+)/
     Parts << $1.split(",").reduce(Part.new){|part, assignment|
       attr, n = assignment.split("=")
-      part.merge({ attr[0] => n.to_i .. n.to_i })
+      part.merge({ attr[0] => n.to_i })
     }
 
   else
@@ -98,7 +99,7 @@ puts "part 1: #{Parts.select{|part|
     state = Rules[state].apply(part)
   end
   state == "A"
-}.map{|part| part.values.map{|r| r.begin}.sum }.sum}"
+}.map{|part| part.values.sum }.sum}"
 
 sum = 0_i64
 ops = [
