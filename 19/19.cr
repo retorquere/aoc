@@ -102,10 +102,12 @@ puts "part 1: #{Parts.select{|part|
 }.map{|part| part.values.sum }.sum}"
 
 sum = 0_i64
+shelves = 0
 ops = [
   { "in", 0, { 'x' => 1 .. 4000, 'm' => 1 .. 4000, 'a' => 1 .. 4000, 's' => 1 .. 4000 } }
 ]
 until ops.empty?
+  shelves += 1
   state, fidx, part = ops.pop
   if state == "A"
     sum += part.values.map{|rng| rng.size }.product(1_i64)
@@ -121,7 +123,4 @@ until ops.empty?
   end
 end
 
-puts "part2 sample expect: 167409079868000"
-puts "part2: < 124722078563800"
-puts "part2: < 123891162566699"
-puts sum
+puts "part2: #{sum} #{shelves}"
