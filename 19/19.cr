@@ -2,6 +2,8 @@
 
 alias Part = Hash(Char, Range(Int32, Int32))
 
+require "./util"
+
 class Filter
   property attr
   property range
@@ -14,19 +16,17 @@ class Filter
   def prune(other : Filter)
     return if other.attr != self.attr
 
-    if other.range.covers?(@range.begin) && other.range.covers?(@range.end)
+    if other.range.covers?(@range)
       raise "#{@attr}#{@range} fully covered by #{other.range}"
-    elsif other.range.covers?(@range.begin)
-      @range = (other.range.end + 1) .. @range.end
-    elsif other.range.covers?(@range.end)
-      @range = @range.begin .. (other.range.begin - 1)
+    elsif other.range.overlaps?(@range)
+      @range = (@range - other.range)[0]
     end
   end
 
   def match(part : Part) : String
     if @pass
       @state
-    elsif @range.covers?(part[@attr].begin) && @range.covers?(part[@attr].end)
+    elsif @range.covers?(part[@attr])
       @state
     else
       ""
@@ -34,15 +34,12 @@ class Filter
   end
 
   def split(part : Part) : Tuple(Part, Array(Part))
-    if @pass
-      return { part, [] of Part }
-    else
-      partrange = part[@attr]
-      return {
-        part.merge({ @attr => [ partrange.begin, @range.begin ].max .. [ partrange.end, @range.end ].min }),
-        [ (partrange.begin ... @range.begin), ((@range.end + 1) .. partrange.end) ].select{|rng| rng.size > 0 }.map{ |rng| part.merge({ @attr => rng }) }
-      }
-    end
+    return { part, [] of Part } if @pass
+
+    return {
+      part.merge({ @attr => part[@attr] * @range }),
+      (part[@attr] - @range).map{|rng| part.merge({ @attr => rng }) }
+    }
   end
 end
 
@@ -103,10 +100,10 @@ puts "part 1: #{Parts.select{|part|
   state == "A"
 }.map{|part| part.values.map{|r| r.begin}.sum }.sum}"
 
+sum = 0_i64
 ops = [
   { "in", 0, { 'x' => 1 .. 4000, 'm' => 1 .. 4000, 'a' => 1 .. 4000, 's' => 1 .. 4000 } }
 ]
-sum = 0_i64
 until ops.empty?
   state, fidx, part = ops.pop
   if state == "A"
@@ -116,13 +113,14 @@ until ops.empty?
   else
     filter = Rules[state].filters[fidx]
     match, excluded = filter.split(part)
-    ops << { filter.state, 0, match }
-    excluded.each do |part|
-      ops << { state, fidx + 1, part }
+    ops << { filter.state, 0, match } unless match.values.find{|rng| rng.empty? }
+    excluded.each do |p|
+      ops << { state, fidx + 1, p } unless p.values.find{|rng| rng.empty? }
     end
   end
 end
 
 puts "part2 sample expect: 167409079868000"
 puts "part2: < 124722078563800"
+puts "part2: < 123891162566699"
 puts sum
