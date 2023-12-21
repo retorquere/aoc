@@ -54,3 +54,5 @@ reachable = garden.plot.select{|pos, plot| plot == 'S'}.keys.uniq
   #garden.show(reachable)
 end
 puts reachable.size
+
+# priemfactoren van 26501365 zijn 5 x 11 x 481843
