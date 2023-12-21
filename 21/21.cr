@@ -8,36 +8,37 @@ D = {+1, 0}
 L = {0, -1}
 
 class Garden
-  @@plot = Hash(Point, Char).new
-  @@height = 0
-  @@width = 0
-  property plot = Hash(Point, Char).new
+  property neighbours = Hash(Point, Array(Point)).new
+  property start = { 0, 0 }
   property height = 0
   property width = 0
 
-  def initialize
-    if @@plot.size == 0
-      File.read("sample.txt").chomp.split("\n").each_with_index do |line, row|
-        @@height = row
-        line.chars.each_with_index do |plot, col|
-          @@width = col
-          @@plot[{ row, col }] = plot
-        end
+  def initialize(infinite : Bool = false)
+    grid = File.read("sample.txt").chomp.split("\n").map{|line| line.chars}
+    @height = grid.size
+    rows = (0 ... @height)
+    @width = grid[0].size
+    cols = (0 ... @width)
+
+    rows.each do |row|
+      cols.each do |col|
+        @start = { row, col } if grid[row][col] == 'S'
+        @neighbours[{ row, col }] = [ U, R, D, L ].map{|move|
+          pos = { row + move.first, col + move.last }
+          pos = { pos.first % @height, pos.last % @width } if infinite
+          if rows.covers?(pos.first) && cols.covers?(pos.last) && grid[pos.first][pos.last] != '#'
+            [ pos ]
+          else
+            [] of Point
+          end
+        }.flatten
       end
     end
-
-    @plot = @@plot.clone
-    @height = @@height
-    @width = @@width
-  end
-
-  def moves(from : Point)
-    [ U, R, D, L ].map{|move| { from.first + move.first, from.last + move.last } }.select{|p| @plot.has_key?(p) && @plot[p] != '#' }
   end
 
   def show(fill : Array(Point))
-    (0 ... self.height).each do |row|
-      (0 ... self.width).each do |col|
+    (0 ... @height).each do |row|
+      (0 ... @width).each do |col|
         pos = { row, col }
         print fill.includes?(pos) ? 'O' : @plot[pos]
       end
@@ -48,9 +49,9 @@ class Garden
 end
 
 garden = Garden.new
-reachable = garden.plot.select{|pos, plot| plot == 'S'}.keys.uniq
+reachable = [ garden.start ]
 6.times do
-  reachable = reachable.map{|p| garden.moves(p) }.flatten.uniq
+  reachable = reachable.map{|p| garden.neighbours[p] }.flatten.uniq
   #garden.show(reachable)
 end
 puts reachable.size
