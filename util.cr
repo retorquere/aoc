@@ -35,6 +35,7 @@ end
 
 class GML
   property nodes = {} of Int32 => String
+  property colors = {} of Int32 => String
   property labels = {} of Int32 => String
   property edges = Set(Tuple(Int32, Int32)).new
 
@@ -43,6 +44,10 @@ class GML
     id = @nodes.size
     @nodes[id] = name
     @labels[id] = label.size == 0 ? name : label
+  end
+
+  def color(name : String, color : String)
+    @colors[@nodes.key_for(name)] = color
   end
 
   def edge(from : String, to : String)
@@ -61,6 +66,7 @@ class GML
         f.puts "    id #{id}"
         f.puts "    label #{@labels[id].to_json}"
         f.puts "    graphics ["
+        f.puts "      fill  \"#{@colors[id]?}\"" if @colors[id]?
         f.puts "      w #{@labels[id].size * 7}.0"
         f.puts "      h 30.0"
         f.puts "    ]"
@@ -68,10 +74,14 @@ class GML
       end
 
       @edges.each do |source, target|
+        bidi = @edges.includes?({target, source})
+        next if bidi && source > target
+
         f.puts "  edge ["
         f.puts "    source #{source}"
         f.puts "    target #{target}"
         f.puts "    graphics ["
+        f.puts "      sourceArrow \"standard\"" if bidi
         f.puts "      targetArrow \"standard\""
         f.puts "    ]"
         f.puts "  ]"
@@ -79,5 +89,38 @@ class GML
 
       f.puts "]"
     end
+  end
+end
+
+class OBJ
+  property vertices = 1
+  property obj = "o 1\nusemtl Default\n"
+
+  def cube(c : Array(Tuple(Int32 | Float64, Int32 | Float64, Int32 | Float64)), color = { 0.0, 0.0, 0.0 })
+    v = @vertices
+    [
+      {c[0][0], c[0][1], c[0][2]},
+      {c[1][0], c[0][1], c[0][2]},
+      {c[1][0], c[1][1], c[0][2]},
+      {c[0][0], c[1][1], c[0][2]},
+      {c[0][0], c[0][1], c[1][2]},
+      {c[1][0], c[0][1], c[1][2]},
+      {c[1][0], c[1][1], c[1][2]},
+      {c[0][0], c[1][1], c[1][2]},
+    ].each do |x, y, z|
+      @obj += "v #{x} #{y} #{z} #{color.map{|n| "#{n}"}.join(" ")}\n"
+      @vertices += 1
+    end
+
+    [
+      {0, 1, 2, 3},
+      {4, 5, 6, 7},
+      {0, 1, 5, 4},
+      {2, 3, 7, 6},
+      {0, 3, 7, 4},
+      {1, 2, 6, 5},
+    ].each do |face|
+      @obj += "f #{face.map{|n| "#{n + v}"}.join(" ")}\n"
     end
   end
+end
