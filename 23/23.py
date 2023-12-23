@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+import networkx as nx
+
+U = (-1, 0)
+R = (0, +1)
+D = (+1, 0)
+L = (0, -1)
+
+allowed = {
+  '.': [ U, R, D, L ],
+  '^': [ U ],
+  '>': [ R ],
+  'v': [ D ],
+  '<': [ L ],
+}
+
+start = None
+finish = None
+with open("input.txt") as f:
+  grid = [ line.strip() for line in f.readlines() ]
+  height = range(0, len(grid))
+  width = range(len(grid[0]))
+  G = nx.DiGraph()
+
+  for row, line in enumerate(grid):
+    for col, tile in enumerate(line):
+      if tile == '#':
+        continue
+
+      if start is None:
+        start = (row, col)
+      finish = (row, col)
+
+      for move in allowed[tile]:
+        move = ( row + move[0], col + move[1] )
+        if move[0] in height and move[1] in width and grid[move[0]][move[1]] != '#':
+          G.add_edge((row, col), move)
+
+print(start, finish)
+nx.write_gml(G, "23.gml")
+print(max([len(path) for path in nx.all_simple_edge_paths(G, start, finish)]))
+
