@@ -57,7 +57,7 @@ Stones.each_with_index do |a, i|
     end
   end
 end
-puts intersections
+puts "part 1: #{intersections}"
 
 Velocities = [
   Hash(Int64, Array(Int64)).new,
@@ -72,42 +72,56 @@ Velocities = [
   end
 end
 
-Rock = Stone.new("0,0,0@0,0,0")
-Rock.v = {0, 1, 2}.map{ |axis|
+RockV = [
+  [] of Int64,
+  [] of Int64,
+  [] of Int64,
+]
+{0, 1, 2}.each do |axis|
+  # assuming somewhat within range...
   min = Stones.map{|stone| stone.v[axis]}.min - 100
   max = Stones.map{|stone| stone.v[axis]}.max + 100
 
   candidates = (min .. max).to_a
+  history = Set{ candidates.size }
   Velocities[axis].each do |v, origin|
     next unless origin.size >= 2
+    history.add(candidates.size)
     # int steps
     candidates = candidates.select{|cv| (cv != v) && ((origin[0] - origin[1]) % (cv - v)) == 0 }
   end
-  candidates.sample
-}
+  puts "#{axis}: #{history}"
+  RockV[axis] = candidates
+end
 
+# rounding errors gonna round
 results = Hash(Int128, Int128).new(0_i128)
-Stones.each_with_index do |a, i|
-  Stones[(i+1)..].each do |b|
-    # slope and intercept wrt rock x/y
-    ma = (a.vy - Rock.vy) / (a.vx - Rock.vx)
-    ia = a.y - (ma * a.x)
-    mb = (b.vy - Rock.vy) / (b.vx - Rock.vx)
-    ib = b.y - (mb * b.x)
+RockV[0].each do |rvx|
+  RockV[1].each do |rvy|
+    RockV[2].each do |rvz|
+      Stones.each_with_index do |a, i|
+        Stones[(i+1)..].each do |b|
+          # slope and intercept wrt rock x/y
+          ma = (a.vy - rvy) / (a.vx - rvx)
+          ia = a.y - (ma * a.x)
+          mb = (b.vy - rvy) / (b.vx - rvx)
+          ib = b.y - (mb * b.x)
     
-    # x/y from top-projection
-    rpx = ((ib-ia) / (ma-mb)).to_i128
-    rpy = (ma*rpx + ia).to_i128
+          # x/y from top-projection
+          rpx = ((ib-ia) / (ma-mb)).to_i128
+          rpy = (ma*rpx + ia).to_i128
     
-    # *should* be integer because of int steps
-    time = ((rpx - a.x) / (a.vx - Rock.vx)).round
-    rpz = a.z + (a.vz - Rock.vz) * time
+          # *should* be integer because of int steps
+          time = ((rpx - a.x) / (a.vx - rvx)).round
+          rpz = a.z + (a.vz - rvz) * time
 
-    raise "not int" unless [rpx, rpy, rpz].all?{|n| n.integer? }
-    
-    result = rpx.to_i128 + rpy.to_i128 + rpz.to_i128
-    results[result] += 1
+          result = rpx.to_i128 + rpy.to_i128 + rpz.to_i128
+          results[result] += 1
+        end
+      end
+    end
   end
 end
 
-puts results.to_a.sort_by { |k, v| -v }[0][0]
+# https://en.wiktionary.org/wiki/educated_guess
+puts "part 2: #{results.to_a.sort_by { |k, v| -v }[0][0]}"
