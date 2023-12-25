@@ -80,9 +80,10 @@ Rock.v = {0, 1, 2}.map{ |axis|
   candidates = (min .. max).to_a
   Velocities[axis].each do |v, origin|
     next unless origin.size >= 2
+    # int steps
     candidates = candidates.select{|cv| (cv != v) && ((origin[0] - origin[1]) % (cv - v)) == 0 }
   end
-  candidates.first
+  candidates.sample
 }
 
 results = Hash(Int128, Int128).new(0_i128)
@@ -98,6 +99,7 @@ Stones.each_with_index do |a, i|
     rpx = ((ib-ia) / (ma-mb)).to_i128
     rpy = (ma*rpx + ia).to_i128
     
+    # *should* be integer because of int steps
     time = ((rpx - a.x) / (a.vx - Rock.vx)).round
     rpz = a.z + (a.vz - Rock.vz) * time
 

@@ -1,5 +1,8 @@
 require "json"
 
+require "json"
+require "base64"
+
 struct Range(B, E)
   def covers?(other : Range(B, E))
     return false if !self.covers?(other.begin)
@@ -30,6 +33,12 @@ struct Range(B, E)
     my_end = self.excludes_end? ? self.end - 1 : self.end
     other_end = other.excludes_end? ? other.end - 1 : other.end
     return [ (self.begin .. (other.begin - 1)), ((other_end + 1) .. my_end) ].select{|r| !r.empty? }
+  end
+end
+
+struct Number
+  def integer? : Bool
+    self % 1 == 0
   end
 end
 
@@ -124,3 +133,4 @@ class OBJ
     end
   end
 end
+
