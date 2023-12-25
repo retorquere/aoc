@@ -6,8 +6,6 @@ from functools import reduce
 
 G = nx.Graph()
 
-start = None
-finish = None
 with open("input.txt") as f:
   for line in f.readlines():
     c1, to = [p.strip() for p in line.strip().split(':')]
@@ -20,6 +18,3 @@ for edge in nx.minimum_edge_cut(G):
   G.remove_edge(*edge)
 components = list(nx.connected_components(G))
 print('part 1:', reduce(lambda x, y: x * len(y), [1] + components))
-
-#nx.draw(G)
-#plt.show()
