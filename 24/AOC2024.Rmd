@@ -1,0 +1,193 @@
+---
+title: "Advent of Code 2024"
+author: "Emiliano Heyns"
+date: "2024-12-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+knitr::opts_knit$set(root.dir = script_dir)
+
+if (!requireNamespace("here", quietly = TRUE)) { install.packages("here") }
+library(here)
+if (!requireNamespace("dplyr", quietly = TRUE)) { install.packages("dplyr") }
+library(dplyr)
+if (!requireNamespace("reshape", quietly = TRUE)) { install.packages("reshape") }
+library(reshape)
+if (!requireNamespace("igraph", quietly = TRUE)) { install.packages("igraph") }
+library(igraph)
+```
+
+## Day 1
+
+```{r, eval=FALSE}
+day1 <- read.table(here("01/part1.txt"), header = FALSE, sep = "", stringsAsFactors = FALSE)
+day1 <- as.data.frame(apply(day1, 2, sort))
+
+day1$diff = abs(day1$V1 - day1$V2)
+
+cat('1.1', sum(day1$diff))
+
+day1 <- day1 %>% mutate(occurrences = sapply(V1, function(x) sum(V2 == x)))
+day1$similarity <- day1$V1 * day1$occurrences
+
+cat('1.2', sum(day1$similarity))
+```
+
+## Day 2
+```{r, eval=FALSE}
+lines <- readLines(here("02/data.txt"), warn=FALSE)
+lines <- strsplit(lines, " ")
+max_level <- max(sapply(lines, length))
+
+lines <- lapply(lines, function(x) {
+  length(x) <- max_level
+  return(x)
+})
+
+day2 <- as.data.frame(do.call(rbind, lines), stringsAsFactors = FALSE)
+day2[] <- lapply(day2, as.numeric)
+
+colnames(day2) <- paste0("level", seq_len(ncol(day2)))
+day2$report <- seq_len(nrow(day2))
+
+safe <- function(x) {
+  diffs <- diff(na.omit(x))
+  all(diffs > 0 & diffs <= 3) || all(diffs < 0 & diffs >= -3)
+}
+
+levelcols <- day2[, grepl("^level", names(day2))]
+day2$safe <- apply(levelcols, 1, safe)
+cat('2.1', nrow(subset(day2, safe == TRUE)))
+
+dampened <- day2
+for (level_col in grep("^level", names(day2), value = TRUE)) {
+  dampen <- day2
+  dampen[[level_col]] <- NA
+  dampened <- rbind(dampened, dampen)
+}
+levelcols <- dampened[, grepl("^level", names(dampened))]
+dampened$safe <- apply(levelcols, 1, safe)
+dampened <- dampened[dampened$safe == TRUE, ]
+cat('2.2', length(unique(dampened$report)))
+```
+
+## Day 3
+```{r, eval=FALSE}
+program <- paste(readLines(here("03/data.txt"), warn=FALSE), collapse = "\n")
+matches <- gregexpr("mul[(](\\d+),(\\d+)[)]|do[(][)]|don't[(][)]", program, perl = TRUE)
+numbers <- regmatches(program, matches)[[1]]
+active <- TRUE
+numbers <- Filter(function(x) {
+  if (startsWith(x, 'do')) {
+    active <<- (x == 'do()')
+    return(FALSE)
+  }
+  else {
+    return(active)
+  }
+}, numbers)
+result <- lapply(numbers, function(x) {
+  as.numeric(unlist(strsplit(gsub("mul\\(|\\)", "", x), ",")))
+})
+day3 <- do.call(rbind, result) %>% as.data.frame()
+day3$mul = day3$V1 * day3$V2
+cat('3', sum(day3$mul))
+```
+
+## Day 4
+
+```{r, eval=FALSE}
+data <- gsub("\n", " ", readLines(here("04/data.txt"), warn = FALSE))
+columns <- nchar(data[[1]])
+data <- paste(data, collapse = " ")
+
+xmas <- 0
+for (word in c("XMAS", "SAMX")) {
+  word <- strsplit(word, "")[[1]]
+  for (space in c(0, columns, columns + 1, columns - 1)) {
+    pattern <- paste(word, collapse = sprintf(".{%d}", space))
+    pattern <- gsub(".{0}", "", pattern)
+    pattern <- sub("^(.)(.+)", "\\1(?=\\2)", pattern)
+    xmas <- xmas + length(unlist(gregexpr(pattern, data, perl=TRUE)))
+  }
+}
+print(xmas)
+
+xmas <- 0
+other <- list(M = "S", S = "M")
+letter <- names(other)
+for (i in 0:3) {
+  tl <- letter[(i %% 2) + 1]
+  tr <- letter[((i %/% 2) %% 2) + 1]
+  bl <- other[[tr]]
+  br <- other[[tl]]
+  pattern <- paste0(tl, "(?=.", tr, ".{", columns - 1, "}A.{", columns - 1, "}", bl, ".", br, ")")
+  xmas <- xmas + length(unlist(gregexpr(pattern, data, perl=TRUE)))
+}
+print(xmas)
+```
+
+## Day 5
+
+```{r}
+input_data <- readLines(here("05/data.txt"), warn=FALSE)
+
+split_index <- which(input_data == "")
+data_part1 <- input_data[1:(split_index - 1)]
+data_part2 <- input_data[(split_index + 1):length(input_data)]
+
+ordering <- read.table(text = paste(data_part1, collapse = "\n"), sep = "|", header = FALSE, stringsAsFactors = FALSE)
+colnames(ordering) <- c("before", "after")
+
+# Read the second part into a dataframe with variable number of columns
+lines <- strsplit(data_part2, ",")
+max_cols <- max(sapply(lines, length))
+padded_lines <- lapply(lines, function(x) {
+  length(x) <- max_cols
+  x
+})
+updates <- as.data.frame(do.call(rbind, padded_lines), stringsAsFactors = FALSE)
+
+is_ordered <- function(row) {
+  row <- row[!is.na(row)]
+  subordering <- ordering[ordering$before %in% row, ]
+  g <- graph_from_data_frame(subordering, directed = TRUE)
+  sort_order <- as.numeric(vertex_attr(g, "name", index = topo_sort(g, mode = "out")))
+  
+  if (length(setdiff(row, sort_order)) > 0) return(NA)
+  indices <- match(row, sort_order)
+  return(all(diff(indices) > 0))  # Check if indices are in increasing order
+}
+
+updates$ordered <- apply(updates, 1, is_ordered)
+
+calculate_middle <- function(row) {
+  if (row['ordered']) {
+    values <- as.numeric(row[grep("^V", names(row))])
+    values <- values[!is.na(values)] 
+    return(values[ceiling(length(values) / 2)])
+  } else {
+    return(NA)
+  }
+}
+
+updates$middle <- apply(updates, 1, calculate_middle)
+print(sum(updates$middle[updates$ordered]))
+
+unordered <- updates[updates$ordered == FALSE, ]
+unordered <- unordered[, grep("^V", names(unordered))]
+
+ordered_middle <- function(row) {
+  row <- row[!is.na(row)]
+  subordering <- ordering[ordering$before %in% row, ]
+  g <- graph_from_data_frame(subordering, directed = TRUE)
+  sort_order <- as.numeric(vertex_attr(g, "name", index = topo_sort(g, mode = "out")))
+  row <- row[order(match(row, sort_order))]
+  return(row[ceiling(length(row) / 2)])
+}
+unordered$middle <- as.numeric(apply(unordered, 1, ordered_middle))
+print(sum(unordered$middle))
+```
