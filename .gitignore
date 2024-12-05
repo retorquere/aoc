@@ -8,6 +8,7 @@
 !*/
 
 .DS_Store
+*.txt
 *.dwarf
 exe
 node_modules
