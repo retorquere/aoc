@@ -6,10 +6,6 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
-script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
-knitr::opts_knit$set(root.dir = script_dir)
-
 if (!requireNamespace('here', quietly = TRUE)) { install.packages('here') }
 library(here)
 if (!requireNamespace('dplyr', quietly = TRUE)) { install.packages('dplyr') }
@@ -20,22 +16,26 @@ if (!requireNamespace('igraph', quietly = TRUE)) { install.packages('igraph') }
 library(igraph)
 if (!requireNamespace('glue', quietly = TRUE)) { install.packages('glue') }
 library(glue)
+
+knitr::opts_chunk$set(echo = FALSE)
+script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+knitr::opts_knit$set(root.dir = script_dir)
 ```
 
 ## Day 1
 
 ```{r, eval=FALSE}
-day1 <- read.table(here('01/part1.txt'), header = FALSE, sep = '', stringsAsFactors = FALSE)
-day1 <- as.data.frame(apply(day1, 2, sort))
+df <- read.table(here('01/part1.txt'), header = FALSE, sep = '', stringsAsFactors = FALSE)
+df <- as.data.frame(apply(df, 2, sort))
 
-day1$diff = abs(day1$V1 - day1$V2)
+df$diff = abs(df$V1 - df$V2)
 
-cat('1.1', sum(day1$diff))
+cat('1.1', sum(df$diff))
 
-day1 <- day1 %>% mutate(occurrences = sapply(V1, function(x) sum(V2 == x)))
-day1$similarity <- day1$V1 * day1$occurrences
+df <- df %>% mutate(occurrences = sapply(V1, function(x) sum(V2 == x)))
+df$similarity <- df$V1 * df$occurrences
 
-cat('1.2', sum(day1$similarity))
+cat('1.2', sum(df$similarity))
 ```
 
 ## Day 2
@@ -49,24 +49,24 @@ lines <- lapply(lines, function(x) {
   return(x)
 })
 
-day2 <- as.data.frame(do.call(rbind, lines), stringsAsFactors = FALSE)
-day2[] <- lapply(day2, as.numeric)
+df <- as.data.frame(do.call(rbind, lines), stringsAsFactors = FALSE)
+df[] <- lapply(df, as.numeric)
 
-colnames(day2) <- paste0('level', seq_len(ncol(day2)))
-day2$report <- seq_len(nrow(day2))
+colnames(df) <- paste0('level', seq_len(ncol(df)))
+df$report <- seq_len(nrow(df))
 
 safe <- function(x) {
   diffs <- diff(na.omit(x))
   all(diffs > 0 & diffs <= 3) || all(diffs < 0 & diffs >= -3)
 }
 
-levelcols <- day2[, grepl('^level', names(day2))]
-day2$safe <- apply(levelcols, 1, safe)
-cat('2.1', nrow(subset(day2, safe == TRUE)))
+levelcols <- df[, grepl('^level', names(df))]
+df$safe <- apply(levelcols, 1, safe)
+cat('2.1', nrow(subset(df, safe == TRUE)))
 
-dampened <- day2
-for (level_col in grep('^level', names(day2), value = TRUE)) {
-  dampen <- day2
+dampened <- df
+for (level_col in grep('^level', names(df), value = TRUE)) {
+  dampen <- df
   dampen[[level_col]] <- NA
   dampened <- rbind(dampened, dampen)
 }
@@ -94,9 +94,9 @@ numbers <- Filter(function(x) {
 result <- lapply(numbers, function(x) {
   as.numeric(unlist(strsplit(gsub('mul\\(|\\)', '', x), ',')))
 })
-day3 <- do.call(rbind, result) %>% as.data.frame()
-day3$mul = day3$V1 * day3$V2
-cat('3', sum(day3$mul))
+df <- do.call(rbind, result) %>% as.data.frame()
+df$mul = df$V1 * df$V2
+cat('3', sum(df$mul))
 ```
 
 ## Day 4
@@ -192,4 +192,41 @@ ordered_middle <- function(row) {
 }
 unordered$middle <- as.numeric(apply(unordered, 1, ordered_middle))
 print(sum(unordered$middle))
+```
+
+## Day 6
+
+```{r}
+M <- do.call(rbind, strsplit(readLines(here('24/06/data.txt'), warn=FALSE), ""))
+M <- rbind(rep(NA, ncol(M)), M, rep(NA, ncol(M)))
+M <- cbind(rep(NA, nrow(M)), M, rep(NA, nrow(M)))
+moves <- list(
+  "^" = matrix(c(-1, 0), nrow = 1, ncol = 2, byrow = TRUE),
+  "v" = matrix(c(1, 0), nrow = 1, ncol = 2, byrow = TRUE),
+  "<" = matrix(c(0, -1), nrow = 1, ncol = 2, byrow = TRUE),
+  ">" = matrix(c(0, 1), nrow = 1, ncol = 2, byrow = TRUE)
+)
+turn <- list(
+  '^' = '>',
+  '>' = 'v',
+  'v' = '<',
+  '<' = '^'
+)
+
+current <- which(M=='^' | M=='v' | M == '>' | M == '<',arr.ind=TRUE)
+direction <- M[current]
+visited <- list(current)
+while (!is.na(M[current])) {
+  nextpos <- current + moves[[direction]]
+  while (!is.na(M[nextpos]) && M[nextpos] == '#') {
+    direction = turn[[direction]]
+    nextpos <- current + moves[[direction]]
+  }
+  current = nextpos
+  if (!is.na(M[current])) visited = unique(append(visited, list(current)))
+}
+for (current in visited) {
+  M[current] = 'X'
+}
+print(sum(M == "X", na.rm = TRUE))
 ```
