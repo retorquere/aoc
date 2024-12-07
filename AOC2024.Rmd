@@ -16,6 +16,8 @@ if (!requireNamespace('igraph', quietly = TRUE)) { install.packages('igraph') }
 library(igraph)
 if (!requireNamespace('glue', quietly = TRUE)) { install.packages('glue') }
 library(glue)
+if (!requireNamespace('zeallot', quietly = TRUE)) { install.packages('zeallot') }
+library(zeallot)
 
 knitr::opts_chunk$set(echo = FALSE)
 script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
@@ -197,36 +199,52 @@ print(sum(unordered$middle))
 ## Day 6
 
 ```{r}
-M <- do.call(rbind, strsplit(readLines(here('24/06/data.txt'), warn=FALSE), ""))
+M <- do.call(rbind, strsplit(readLines(here('24/06/sample.txt'), warn=FALSE), ""))
 M <- rbind(rep(NA, ncol(M)), M, rep(NA, ncol(M)))
 M <- cbind(rep(NA, nrow(M)), M, rep(NA, nrow(M)))
-moves <- list(
-  "^" = matrix(c(-1, 0), nrow = 1, ncol = 2, byrow = TRUE),
-  "v" = matrix(c(1, 0), nrow = 1, ncol = 2, byrow = TRUE),
-  "<" = matrix(c(0, -1), nrow = 1, ncol = 2, byrow = TRUE),
-  ">" = matrix(c(0, 1), nrow = 1, ncol = 2, byrow = TRUE)
+startpos <- list(
+  "^" = matrix(c(-1, 0), nrow=1),
+  ">" = matrix(c(0, 1), nrow=1),
+  "v" = matrix(c(1, 0), nrow=1),
+  "<" = matrix(c(0, -1), nrow=1)
 )
-turn <- list(
-  '^' = '>',
-  '>' = 'v',
-  'v' = '<',
-  '<' = '^'
+rightturn <- function(direction) {
+  return(direction %*%  matrix(c(0, 1, -1, 0), ncol=2))
+}
+side <- c(
+  '-1,0' = 1,
+  '0,1' = 2,
+  '1,0' = 4,
+  '0,-1' = 8,
+  'loop' = 16
 )
+start <- list(
+  pos = which(M=='^' | M=='v' | M == '>' | M == '<',arr.ind=TRUE)
+)
+start$dir <- startpos[[M[start$pos]]]
+M[start$pos] <- side[paste(start$dir, collapse=',')]
+M[M == '.'] <- 0
 
-current <- which(M=='^' | M=='v' | M == '>' | M == '<',arr.ind=TRUE)
-direction <- M[current]
-visited <- list(current)
-while (!is.na(M[current])) {
-  nextpos <- current + moves[[direction]]
-  while (!is.na(M[nextpos]) && M[nextpos] == '#') {
-    direction = turn[[direction]]
-    nextpos <- current + moves[[direction]]
+walk <- function(m, start) {
+  guard <- start
+  while (TRUE) {
+    while (!is.na(m[guard$pos + guard$dir]) && (m[guard$pos + guard$dir] == '#')) { # turn as much as required
+      guard$dir <- rightturn(guard$dir)
+    }
+    origin <- guard
+    guard$pos <- guard$pos + guard$dir # actually move
+
+    if (is.na(m[guard$pos])) return(list(m, FALSE)) # end of shift
+
+    if (bitwAnd(as.integer(m[guard$pos]), side[paste(guard$dir, collapse=',')]) != 0) { # loop: been here before, in this direction
+      return(list(m, TRUE))
+    }
+    m[guard$pos] <- bitwOr(as.integer(m[guard$pos]), side[paste(guard$dir, collapse=',')]) # mark
   }
-  current = nextpos
-  if (!is.na(M[current])) visited = unique(append(visited, list(current)))
 }
-for (current in visited) {
-  M[current] = 'X'
-}
-print(sum(M == "X", na.rm = TRUE))
+
+c(m, loop) %<-% walk(M, start)
+
+# we have actually visited all these points
+print(sum(sapply(m, function(x){ v = suppressWarnings(as.integer(x)); !is.na(v) && bitwAnd(v, 15) != 0 })))
 ```
