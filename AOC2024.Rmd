@@ -16,8 +16,6 @@ if (!requireNamespace('igraph', quietly = TRUE)) { install.packages('igraph') }
 library(igraph)
 if (!requireNamespace('glue', quietly = TRUE)) { install.packages('glue') }
 library(glue)
-if (!requireNamespace('zeallot', quietly = TRUE)) { install.packages('zeallot') }
-library(zeallot)
 
 knitr::opts_chunk$set(echo = FALSE)
 script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
@@ -199,7 +197,7 @@ print(sum(unordered$middle))
 ## Day 6
 
 ```{r}
-M <- do.call(rbind, strsplit(readLines(here('24/06/sample.txt'), warn=FALSE), ""))
+M <- do.call(rbind, strsplit(readLines(here('24/06/data.txt'), warn=FALSE), ""))
 M <- rbind(rep(NA, ncol(M)), M, rep(NA, ncol(M)))
 M <- cbind(rep(NA, nrow(M)), M, rep(NA, nrow(M)))
 startpos <- list(
@@ -215,8 +213,7 @@ side <- c(
   '-1,0' = 1,
   '0,1' = 2,
   '1,0' = 4,
-  '0,-1' = 8,
-  'loop' = 16
+  '0,-1' = 8
 )
 start <- list(
   pos = which(M=='^' | M=='v' | M == '>' | M == '<',arr.ind=TRUE)
@@ -225,7 +222,7 @@ start$dir <- startpos[[M[start$pos]]]
 M[start$pos] <- side[paste(start$dir, collapse=',')]
 M[M == '.'] <- 0
 
-walk <- function(m, start) {
+walk <- function(m) {
   guard <- start
   while (TRUE) {
     while (!is.na(m[guard$pos + guard$dir]) && (m[guard$pos + guard$dir] == '#')) { # turn as much as required
@@ -234,17 +231,30 @@ walk <- function(m, start) {
     origin <- guard
     guard$pos <- guard$pos + guard$dir # actually move
 
-    if (is.na(m[guard$pos])) return(list(m, FALSE)) # end of shift
+    if (is.na(m[guard$pos])) return(list(M=m, loop=FALSE)) # end of shift
 
     if (bitwAnd(as.integer(m[guard$pos]), side[paste(guard$dir, collapse=',')]) != 0) { # loop: been here before, in this direction
-      return(list(m, TRUE))
+      return(list(M=m, loop=TRUE))
     }
     m[guard$pos] <- bitwOr(as.integer(m[guard$pos]), side[paste(guard$dir, collapse=',')]) # mark
   }
 }
 
-c(m, loop) %<-% walk(M, start)
+walked <- walk(M)
 
 # we have actually visited all these points
-print(sum(sapply(m, function(x){ v = suppressWarnings(as.integer(x)); !is.na(v) && bitwAnd(v, 15) != 0 })))
+visited <- apply(walked$M, c(1, 2), function(x) { v <- suppressWarnings(as.integer(x)); ifelse(v == 0, NA, v) })
+visited <- which(!is.na(visited), arr.ind = TRUE)
+print(nrow(visited))
+obstructions <- 0
+for (i in 1:nrow(visited)) {
+  obstruction <- visited[i, , drop = FALSE]
+  if (!identical(obstruction, start$pos)) {
+    #cat('testing', i, paste(obstruction, collapse =','), '\n')
+    diverted <- M
+    diverted[obstruction] <- '#'
+    if (walk(diverted)$loop) obstructions <- obstructions + 1
+  }
+}
+print(obstructions)
 ```

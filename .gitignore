@@ -8,8 +8,13 @@
 !*/
 
 .DS_Store
+.RHistory
+.RData
 *.txt
 *.html
 *.dwarf
 exe
 node_modules
+
+# data
+24
