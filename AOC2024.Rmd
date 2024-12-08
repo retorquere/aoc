@@ -16,10 +16,15 @@ if (!requireNamespace('igraph', quietly = TRUE)) { install.packages('igraph') }
 library(igraph)
 if (!requireNamespace('glue', quietly = TRUE)) { install.packages('glue') }
 library(glue)
+if (!requireNamespace('gtools', quietly = TRUE)) { install.packages('gtools') }
+library(gtools)
+if (!requireNamespace('gmp', quietly = TRUE)) { install.packages('gmp') }
+library(gmp)
 
 knitr::opts_chunk$set(echo = FALSE)
 script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
 knitr::opts_knit$set(root.dir = script_dir)
+options(scipen = 999)
 ```
 
 ## Day 1
@@ -134,7 +139,7 @@ print(xmas)
 
 ## Day 5
 
-```{r}
+```{r, eval=FALSE}
 input_data <- readLines(here('05/data.txt'), warn=FALSE)
 
 split_index <- which(input_data == '')
@@ -196,7 +201,7 @@ print(sum(unordered$middle))
 
 ## Day 6
 
-```{r}
+```{r, eval=FALSE}
 M <- do.call(rbind, strsplit(readLines(here('24/06/data.txt'), warn=FALSE), ""))
 M <- rbind(rep(NA, ncol(M)), M, rep(NA, ncol(M)))
 M <- cbind(rep(NA, nrow(M)), M, rep(NA, nrow(M)))
@@ -257,4 +262,112 @@ for (i in 1:nrow(visited)) {
   }
 }
 print(obstructions)
+```
+
+## Day 7
+
+```{r, eval=FALSE}
+library(gtools)
+
+create_row <- function(row) {
+  parts <- strsplit(row, ":")[[1]]
+  result <- as.numeric(trimws(parts[1]))
+  operands <- as.numeric(unlist(strsplit(trimws(parts[2]), " ")))
+  list(result = result, operands = operands)
+}
+
+test <- function(row, ops) {
+  operands <- row$operands
+  result <- operands[1]
+  operands <- operands[-1]
+  for (i in seq_along(ops)) {
+    if (result > row$result) return(FALSE)
+
+    if (ops[i] == "+") {
+      result <- result + operands[i]
+    } else if (ops[i] == "*") {
+      result <- result * operands[i]
+    } else if (ops[i] == "|") {
+      result <- as.numeric(paste0(result, operands[i]))
+    }
+  }
+  return(result == row$result)
+}
+
+solvable1 <- function(row) {
+  ops_list <- permutations(n = 2, r = length(row$operands) - 1, v = c("+", "*"), repeats.allowed = TRUE)
+  for (ops in 1:nrow(ops_list)) {
+    if (test(row, ops_list[ops, ]))  return(TRUE)
+  }
+  return(FALSE)
+}
+
+solvable2 <- function(row) {
+  n <- length(row$operands) - 1
+  ops_list <- permutations(n = 3, r = n, v = c("+", "*", "|"), repeats.allowed = TRUE)
+  for (ops in 1:nrow(ops_list)) {
+    if (test(row, ops_list[ops, ])) {
+      return(TRUE)
+    }
+  }
+  return(FALSE)
+}
+
+# Read the data and process the rows
+rows <- lapply(readLines(here('24/07/data.txt')), create_row)
+
+solvable_results <- sapply(rows, function(r) if (solvable1(r)) r$result else 0)
+cat('part 1', sum(solvable_results), '\n')
+
+solvable_results <- sapply(rows, function(r) if (solvable2(r)) r$result else 0)
+cat('part 2', sum(solvable_results), '\n')
+```
+## Day 8
+
+```{r}
+M <- do.call(rbind, strsplit(readLines(here('24/08/data.txt'), warn=FALSE), ""))
+M[M=='.'] <- NA
+
+# Find positions of antennas
+positions <- which(!is.na(M), arr.ind = TRUE)
+
+# Create a list to store positions by antenna frequency
+antenna_positions <- split(as.data.frame(positions), M[positions])
+
+# generate pairs of positions
+generate_pairs <- function(pos) {
+  combn(seq_len(nrow(pos)), 2, function(idx) list(pos[idx[1], ], pos[idx[2], ]), simplify = FALSE)
+}
+
+# Generate pairs for each antenna frequency
+pairs_list <- lapply(antenna_positions, generate_pairs)
+
+# flatten the list
+pairs <- do.call(c, pairs_list)
+
+anti <- M
+for (pair in pairs) {
+  ant1 <- as.matrix(pair[[1]])
+  ant2 <- as.matrix(pair[[2]])
+  for (p in list(2 * ant1 - ant2, 2 * ant2 - ant1)) {
+    if (p[[1]] >= 1 && p[[1]] <= nrow(M) && p[[2]] >= 1 && p[[2]] <= ncol(M))  anti[p] <- "#"
+  }
+}
+print(sum(anti == '#', na.rm = TRUE))
+
+anti <- M
+nrowM <- nrow(M)
+ncolM <- ncol(M)
+S <- max(nrowM, ncolM)
+for (pair in pairs) {
+  ant1 <- as.matrix(pair[[1]])
+  ant2 <- as.matrix(pair[[2]])
+  delta <- ant1 - ant2
+  delta <- delta / as.numeric(gcd(delta[1, 1], delta[1, 2]))
+  for (n in -S:S) {
+    p <- ant1 + n * delta
+    if (p[[1]] >= 1 && p[[1]] <= nrow(M) && p[[2]] >= 1 && p[[2]] <= ncol(M))  anti[p] <- "#"
+  }
+}
+print(sum(anti == '#', na.rm = TRUE))
 ```
