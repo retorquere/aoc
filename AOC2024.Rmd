@@ -10,6 +10,8 @@ if (!requireNamespace('here', quietly = TRUE)) { install.packages('here') }
 library(here)
 if (!requireNamespace('dplyr', quietly = TRUE)) { install.packages('dplyr') }
 library(dplyr)
+if (!requireNamespace('tidyr', quietly = TRUE)) { install.packages('tidyr') }
+library(tidyr)
 if (!requireNamespace('reshape', quietly = TRUE)) { install.packages('reshape') }
 library(reshape)
 if (!requireNamespace('igraph', quietly = TRUE)) { install.packages('igraph') }
@@ -20,6 +22,8 @@ if (!requireNamespace('gtools', quietly = TRUE)) { install.packages('gtools') }
 library(gtools)
 if (!requireNamespace('gmp', quietly = TRUE)) { install.packages('gmp') }
 library(gmp)
+
+library(data.table)
 
 knitr::opts_chunk$set(echo = FALSE)
 script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
@@ -324,7 +328,7 @@ cat('part 2', sum(solvable_results), '\n')
 ```
 ## Day 8
 
-```{r}
+```{r, eval=FALSE}
 M <- do.call(rbind, strsplit(readLines(here('24/08/data.txt'), warn=FALSE), ""))
 M[M=='.'] <- NA
 
@@ -370,4 +374,66 @@ for (pair in pairs) {
   }
 }
 print(sum(anti == '#', na.rm = TRUE))
+```
+## Day 9.1
+
+```{r, eval=FALSE}
+disk <- paste(readLines(here('24/09/data.txt'), warn=FALSE), collapse = '') %>% trimws()
+disk <- unlist(strsplit(disk, ''))
+disk <- data.frame(
+  id = ifelse(seq_along(disk) %% 2 == 1, (seq_along(disk) - 1) / 2, -1),
+  blocks = as.integer(disk)
+)
+disk <- disk %>% uncount(blocks)
+free <- which(disk < 0)
+data <- rev(which(disk >= 0))
+free <- c(free, rep(NA, max(length(free), length(data)) - length(free)))
+data <- c(data, rep(NA, max(length(free), length(data)) - length(data)))
+
+swap <- data.frame(free = free, data = data)
+swap <- swap[complete.cases(swap), ]
+swap <- swap[swap$free < swap$data, ]
+
+for (i in 1:nrow(swap)) {
+  disk[c(swap$data[i], swap$free[i]), ] <- disk[c(swap$free[i], swap$data[i]), ]
+}
+disk <- disk[disk$id >= 0, , drop = FALSE]
+disk$checksum <- disk$id * (seq_along(disk$id) - 1)
+print(sum(disk$checksum))
+```
+## Day 9.2
+
+```{r, eval=FALSE}
+disk <- paste(readLines(here('24/09/data.txt'), warn=FALSE), collapse = '') %>% trimws()
+disk <- unlist(strsplit(disk, ''))
+disk <- data.frame(
+  id = ifelse(seq_along(disk) %% 2 == 1, (seq_along(disk) - 1) / 2, -1),
+  blocks = as.integer(disk)
+)
+data <- disk[disk$id >= 0, ]
+data <- data[order(nrow(data):1),]
+
+disk <- disk %>% uncount(blocks)
+
+disk$blocks <- with(disk, ave(id, cumsum(c(TRUE, diff(id) != 0)), FUN = length))
+
+pb <- txtProgressBar(min = 0, max = nrow(data), style = 3)  # Initialize progress bar
+for (i in 1:nrow(data)) {
+  setTxtProgressBar(pb, i)  # Update progress bar
+  blocks <- data$blocks[i]
+  datarow <- which(disk$id == data$id[i])[1]
+  freerow <- which(disk$id < 0 & disk$blocks >= blocks)[1]
+  if (!is.na(freerow) && freerow < datarow) {
+    #cat(data$id[i], '(', blocks, ')', datarow, '->', freerow, '\n')
+    temp <- disk[datarow:(datarow + blocks - 1), ]
+    disk[datarow:(datarow + blocks - 1), ] <- disk[freerow:(freerow + blocks - 1), ]
+    disk[freerow:(freerow + blocks - 1), ] <- temp
+
+    disk$blocks <- with(disk, ave(id, cumsum(c(TRUE, diff(id) != 0)), FUN = length))
+  }
+}
+close(pb)
+disk$id[disk$id < 0] <- 0
+disk$checksum <- disk$id * (seq_along(disk$id) - 1)
+print(sum(disk$checksum))
 ```
