@@ -22,6 +22,8 @@ if (!requireNamespace('gtools', quietly = TRUE)) { install.packages('gtools') }
 library(gtools)
 if (!requireNamespace('gmp', quietly = TRUE)) { install.packages('gmp') }
 library(gmp)
+if (!requireNamespace('memoise', quietly = TRUE)) { install.packages('memoise') }
+library(memoise)
 
 library(data.table)
 
@@ -167,7 +169,7 @@ is_ordered <- function(row) {
   subordering <- ordering[ordering$before %in% row, ]
   g <- graph_from_data_frame(subordering, directed = TRUE)
   sort_order <- as.numeric(vertex_attr(g, 'name', index = topo_sort(g, mode = 'out')))
-  
+
   if (length(setdiff(row, sort_order)) > 0) return(NA)
   indices <- match(row, sort_order)
   return(all(diff(indices) > 0))  # Check if indices are in increasing order
@@ -178,7 +180,7 @@ updates$ordered <- apply(updates, 1, is_ordered)
 calculate_middle <- function(row) {
   if (row['ordered']) {
     values <- as.numeric(row[grep('^V', names(row))])
-    values <- values[!is.na(values)] 
+    values <- values[!is.na(values)]
     return(values[ceiling(length(values) / 2)])
   } else {
     return(NA)
@@ -436,4 +438,58 @@ close(pb)
 disk$id[disk$id < 0] <- 0
 disk$checksum <- disk$id * (seq_along(disk$id) - 1)
 print(sum(disk$checksum))
+```
+
+## Day 10
+
+```{r, eval=FALSE}
+M <- do.call(rbind, strsplit(readLines(here('24/10/data.txt'), warn=FALSE), ""))
+M <- suppressWarnings(apply(M, 2, as.numeric))
+G <- make_lattice(c(nrow(M), ncol(M)), directed = TRUE, mutual=TRUE)
+V(G)$height <- as.vector(t(M))
+V(G)$label <- paste0(V(G)$name, " (", V(G)$height, ")")
+G <- delete_vertices(G, V(G)[is.na(V(G)$height)])
+
+edges_to_delete <- c()
+for (i in seq_along(E(G))) {
+  endpoints <- ends(G, E(G)[i])
+  from <- endpoints[1]
+  to <- endpoints[2]
+  if (V(G)$height[to] - V(G)$height[from] != 1) edges_to_delete <- c(edges_to_delete, E(G)[i])
+}
+G <- delete_edges(G, edges_to_delete)
+#plot(G, vertex.label = V(G)$height)
+
+trailstarts <- V(G)[V(G)$height == 0]
+trailends <- V(G)[V(G)$height == 9]
+score <- 0
+for (trailstart in trailstarts) {
+  for (trailend in trailends) {
+    if (length(suppressWarnings(shortest_paths(G, from = trailstart, to = trailend)$vpath[[1]])) > 0) score <- score + 1
+  }
+}
+print(score)
+```
+## Day 11
+
+```{r, eval = FALSE}
+stones <- as.integer(unlist(strsplit(paste(readLines(here('24/11/data.txt'), warn=FALSE), collapse = ' '), ' ')))
+
+blink <- memoise(function(stone, toblink) {
+  if (toblink == 0) return(1)
+
+  if (stone == 0) return(blink(1, toblink - 1))
+
+  stone_str <- as.character(stone)
+  if (nchar(stone_str) %% 2 == 0) {
+    half <- nchar(stone_str) %/% 2
+    return(blink(as.integer(substr(stone_str, 1, half)), toblink - 1) +
+           blink(as.integer(substr(stone_str, half + 1, nchar(stone_str))), toblink - 1))
+  }
+
+  return(blink(stone * 2024, toblink - 1))
+})
+
+print(sum(sapply(stones, blink, toblink = 25)))
+print(sum(sapply(stones, blink, toblink = 75)))
 ```
