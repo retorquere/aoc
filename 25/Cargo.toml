@@ -1,0 +1,29 @@
+[package]
+name = "AOC"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "01"
+path = "01.rs"
+
+[[bin]]
+name = "02"
+path = "02.rs"
+
+[[bin]]
+name = "03"
+path = "03.rs"
+
+[[bin]]
+name = "04"
+path = "04.rs"
+
+[[bin]]
+name = "05"
+path = "05.rs"
+
+[dependencies]
+petgraph = "0.8.3"
+colored = "2"
+itertools = "0.14.0"
