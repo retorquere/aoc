@@ -1,4 +1,4 @@
-use std::ops::RangeInclusive;
+use std::ops::Range;
 use std::collections::HashSet;
 use itertools::Itertools;
 use std::cmp::max;
@@ -11,13 +11,13 @@ enum Category {
 }
 
 fn main() {
-  let mut start = Instant::now();
+  let mut started = Instant::now();
   // let mut input = String::new();
   // File::open("05.txt").expect("FATAL: Failed to open input.")
   // .read_to_string(&mut input).expect("FATAL: Failed to read input.");
   let input = include_str!("05.txt");
 
-  let mut is_fresh: Vec<RangeInclusive<i64>> = Vec::new();
+  let mut is_fresh: Vec<Range<i64>> = Vec::new();
   let mut ingredients: HashSet<i64> = HashSet::new();
   let mut cat = Category::Fresh;
 
@@ -29,33 +29,36 @@ fn main() {
       let ends: Vec<&str> = line.split('-').collect();
       let start: i64 = ends.get(0).unwrap().parse().unwrap();
       let end: i64 = ends.last().unwrap().parse().unwrap();
-      is_fresh.push(start ..= end);
+      is_fresh.push(start .. end + 1);
     }
     else {
       ingredients.insert(line.parse().unwrap());
     }
   }
-  println!("load took {:?}", start.elapsed());
+  println!("load took {:?}", started.elapsed());
 
-  start = Instant::now();
+  started = Instant::now();
   let mut n_fresh: i64 = 0;
   for ingredient in &ingredients {
     if is_fresh.iter().any(|range| range.contains(&ingredient)) {
       n_fresh += 1;
     }
   }
-  println!("{} ingredients are fresh ({:?})", n_fresh, start.elapsed());
+  println!("{} ingredients are fresh ({:?})", n_fresh, started.elapsed());
 
-  start = Instant::now();
-  println!("{} ingredients could be fresh", is_fresh
+  started = Instant::now();
+
+  let n_fresh: i64 = is_fresh
     .into_iter()
-    .sorted_by_key(|range| *range.start())
-    .fold(Vec::new(), |mut acc: Vec<RangeInclusive<i64>>, range| {
-      if let Some(last_range) = acc.last() {
-        if last_range.contains(range.start()) {
-          let extended = *last_range.start() ..= max(*last_range.end(), *range.end());
-          acc.pop();
-          acc.push(extended);
+    .sorted_by_key(|range| range.start)
+    .fold(Vec::new(), |mut acc: Vec<Range<i64>>, range| {
+      if let Some(last_range) = acc.last_mut() {
+        // if last_range.contains(&start) // this does not work?!
+        if last_range.start <= range.start && range.start < last_range.end {
+          // let extended = last_range.start .. max(last_range.end, range.end);
+          // acc.pop();
+          // acc.push(extended);
+          last_range.end = max(last_range.end, range.end);
         }
         else {
           acc.push(range)
@@ -68,7 +71,7 @@ fn main() {
       acc
     })
     .into_iter()
-    .fold(0i64, |acc, range| { acc + (range.end() - range.start() + 1) })
-  );
-  println!("({:?})", start.elapsed());
+    .fold(0i64, |acc, range| { acc + (range.end - range.start) });
+
+  println!("{} ingredients could be fresh ({:?})", n_fresh, started.elapsed());
 }

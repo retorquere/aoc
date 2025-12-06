@@ -24,6 +24,10 @@ if (!requireNamespace('gmp', quietly = TRUE)) { install.packages('gmp') }
 library(gmp)
 if (!requireNamespace('memoise', quietly = TRUE)) { install.packages('memoise') }
 library(memoise)
+if (!requireNamespace('ggplot2', quietly = TRUE)) { install.packages('ggplot2') }
+library(ggplot2)
+if (!requireNamespace('scales', quietly = TRUE)) { install.packages('scales') }
+library(scales)
 
 library(data.table)
 
@@ -480,11 +484,17 @@ blink <- memoise(function(stone, toblink) {
 
   if (stone == 0) return(blink(1, toblink - 1))
 
-  stone_str <- as.character(stone)
-  if (nchar(stone_str) %% 2 == 0) {
-    half <- nchar(stone_str) %/% 2
-    return(blink(as.integer(substr(stone_str, 1, half)), toblink - 1) +
-           blink(as.integer(substr(stone_str, half + 1, nchar(stone_str))), toblink - 1))
+  #stone_str <- as.character(stone)
+  #if (nchar(stone_str) %% 2 == 0) {
+  #  half <- nchar(stone_str) %/% 2
+  #  return(blink(as.integer(substr(stone_str, 1, half)), toblink - 1) +
+  #         blink(as.integer(substr(stone_str, half + 1, nchar(stone_str))), toblink - 1))
+  #}
+  digits <- floor(log10(stone)) + 1
+  if (digits %% 2== 0) {
+    midpoint <- ceiling(digits / 2)
+    divisor <- 10^(digits - midpoint)
+    return(blink(stone %/% divisor, toblink - 1) + blink(stone %% divisor, toblink - 1))
   }
 
   return(blink(stone * 2024, toblink - 1))
@@ -492,4 +502,99 @@ blink <- memoise(function(stone, toblink) {
 
 print(sum(sapply(stones, blink, toblink = 25)))
 print(sum(sapply(stones, blink, toblink = 75)))
+```
+
+Day 12
+
+```{r}
+M <- do.call(rbind, strsplit(readLines(here('24/12/sample.txt'), warn=FALSE), ""))
+G <- make_lattice(c(nrow(M), ncol(M)))
+V(G)$crop <- as.vector(t(M))
+V(G)$row <- rep(1:nrow(M), each = ncol(M))
+V(G)$col <- rep(1:ncol(M), times = nrow(M))
+
+edges_to_remove <- E(G)[sapply(E(G), function(e) {
+  nodes <- ends(G, e)
+  V(G)[nodes[1]]$crop != V(G)[nodes[2]]$crop
+})]
+G <- delete_edges(G, edges_to_remove)
+
+areas <- components(G)
+areas <- lapply(unique(areas$membership), function(i) {
+  area <- induced_subgraph(G, which(areas$membership == i))
+  
+  df <- data.frame(
+    row = V(area)$row,
+    col = V(area)$col
+  )
+  df <-df %>%
+    rowwise() %>%
+    mutate(
+      corners = sum(
+        # Top-left corner
+        (!any((row - 1 == df$row & col == df$col) & (row == df$row & col + 1 == df$col)) |
+         !any((row - 1 == df$row & col + 1 == df$col))),
+        # Top-right corner
+        (!any((row - 1 == df$row & col == df$col) & (row == df$row & col - 1 == df$col)) |
+         !any((row - 1 == df$row & col - 1 == df$col))),
+        # Bottom-left corner
+        (!any((row + 1 == df$row & col == df$col) & (row == df$row & col + 1 == df$col)) |
+         !any((row + 1 == df$row & col + 1 == df$col))),
+        # Bottom-right corner
+        (!any((row + 1 == df$row & col == df$col) & (row == df$row & col - 1 == df$col)) |
+         !any((row + 1 == df$row & col - 1 == df$col)))
+      )
+    ) %>%
+    ungroup()
+  
+  print(df)
+  print(ggplot(df, aes(x = col, y = row)) +
+    geom_tile(fill = "blue", color = "white") +
+    scale_y_reverse() +  # Reverse the y-axis to match typical grid layout
+    scale_y_reverse(breaks = seq(min(df$row), max(df$row), by = 1)) +  # Reverse the y-axis and show only whole numbers
+    scale_x_continuous(breaks = seq(min(df$col), max(df$col), by = 1)) +  # Show only whole numbers on x-axis
+    coord_fixed() +  # Ensure equal scaling of x and y axes
+    theme_minimal() + 
+    labs(title = paste("Grid Plot for Row", i), x = "Column", y = "Row")
+  )
+  
+  return(data.frame(
+    area = vcount(area),
+    perimeter = sum(4 - degree(area, mode = "out")),
+    corners = sum(df$corners)
+  ))
+})
+areas <- do.call(rbind, areas)
+areas$part1 = areas$area * areas$perimeter
+print(sum(areas$part1))
+```
+
+```{r}
+# Sample dataframe
+df <- data.frame(
+  row = c(1, 1, 2, 2),
+  col = c(5, 6, 5, 6)
+)
+
+# Function to check for the existence of neighbors
+check_neighbors <- function(df) {
+  df %>%
+    rowwise() %>%
+    mutate(
+      top_left = any((row - 1 == df$row) & (col - 1 == df$col)),
+      top_right = any((row - 1 == df$row) & (col + 1 == df$col)),
+      bottom_left = any((row + 1 == df$row) & (col - 1 == df$col)),
+      bottom_right = any((row + 1 == df$row) & (col + 1 == df$col))
+    ) %>%
+    mutate(
+      top_left_free = !top_left,
+      top_right_free = !top_right,
+      bottom_left_free = !bottom_left,
+      bottom_right_free = !bottom_right
+    ) %>%
+    ungroup()
+}
+
+# Apply the function to the dataframe
+df <- check_neighbors(df)
 ```
