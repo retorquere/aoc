@@ -21,9 +21,8 @@ fn main() {
   let mut beams1: HashSet<i64> = HashSet::new();
   beams1.insert(start);
   for &splitter in &splitters {
-    if beams1.contains(&splitter) {
+    if beams1.remove(&splitter) {
       splits += 1;
-      beams1.remove(&splitter);
 
       for &way in [-1i64, 1i64].iter() {
         if manifold.contains(&(splitter + way)) { // deref a calculation... this is fucking nuts. Why no pass by value?!?!
