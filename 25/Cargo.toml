@@ -31,9 +31,11 @@ path = "06.rs"
 name = "07"
 path = "07.rs"
 
+[[bin]]
+name = "08"
+path = "08.rs"
+
 [dependencies]
 petgraph = "0.8.3"
-colored = "2"
 itertools = "0.14.0"
-criterion = "0.8.0"
 regex = "1.12.2"
