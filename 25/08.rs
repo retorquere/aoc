@@ -34,6 +34,7 @@ fn main() {
     let mut c1 = circuits.iter().position(|c| c.contains(&j1)).unwrap();
     let mut c2 = circuits.iter().position(|c| c.contains(&j2)).unwrap();
 
+    connected += 1;
     if c1 != c2 {
       if c1 > c2 {
         std::mem::swap(&mut c1, &mut c2);
@@ -42,7 +43,6 @@ fn main() {
       let joined = circuits.remove(c2);
       circuits[c1].extend(joined);
 
-      connected += 1;
       if connected == 1000 {
         println!("1: {}", circuits
           .iter()
