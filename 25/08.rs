@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 fn main() {
   let input = include_str!("08.txt");
 
@@ -44,10 +42,12 @@ fn main() {
       circuits[c1].extend(joined);
 
       if connected == 1000 {
-        println!("1: {}", circuits
+        let mut sizes = circuits.iter().map(|c| c.len()).collect::<Vec<usize>>();
+        sizes.sort();
+
+        println!("1: {}", sizes
           .iter()
-          .map(|c| c.len())
-          .sorted_by(|a, b| b.cmp(a))
+          .rev()
           .take(3)
           .product::<usize>());
       }
