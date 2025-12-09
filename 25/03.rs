@@ -14,7 +14,7 @@ fn shift(jolt: String, bank: String, length: usize) -> (String, String) {
 }
 
 fn main() {
-  println!("{}", std::fs::read_to_string("03.txt").unwrap().trim().split('\n').map(|b| {
+  println!("{}", include_str!("03.txt").trim().split('\n').map(|b| {
     let mut bank = b.to_string();
     if bank.is_empty() { return 0; }
 

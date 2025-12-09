@@ -1,11 +1,5 @@
-use std::fs::File;
-use std::io::Read;
-
 fn main() {
-
-  let mut turns = String::new();
-  File::open("01.txt").expect("FATAL: Failed to open 01.txt.")
-    .read_to_string(&mut turns).expect("FATAL: Failed to read contents of a.txt.");
+  let turns = include_str!("01.txt");
 
   let mut pos: i32 = 50;
   let mut zeroes: i32 = 0;
